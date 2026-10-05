@@ -223,6 +223,10 @@ def preparar_tablas(eng):
                 precio_unidad {decimal}, total {decimal}
             )"""))
         con.execute(text("CREATE TABLE IF NOT EXISTS configuracion (clave TEXT PRIMARY KEY, valor TEXT)"))
+        if postgres:
+            # En Supabase: nadie más que el programa puede leer o cambiar estas tablas.
+            con.execute(text("ALTER TABLE pedidos ENABLE ROW LEVEL SECURITY"))
+            con.execute(text("ALTER TABLE configuracion ENABLE ROW LEVEL SECURITY"))
     # Añadir las columnas nuevas a una base de datos creada con una versión anterior.
     existentes = {c["name"] for c in inspect(eng).get_columns("pedidos")}
     with eng.begin() as con:
