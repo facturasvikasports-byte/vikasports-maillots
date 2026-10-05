@@ -1,0 +1,38 @@
+{
+  "precio_base": 60,
+  "opciones": {
+    "Técnica": {
+      "Sublimación": 0,
+      "Recorte": 0
+    },
+    "Diseño": {
+      "Diseño personalizado": 20,
+      "De catálogo": 0
+    },
+    "Tejido": {
+      "Forrado": 20,
+      "Licra + gasa": 20
+    },
+    "Falda": {
+      "Sin falda": 0,
+      "1 falda": 5,
+      "2 faldas": 10,
+      "1 doble falda": 10,
+      "2 dobles faldas": 20
+    },
+    "Mangas": {
+      "Sin mangas": 0,
+      "1 manga larga": 7,
+      "2 mangas largas": 14,
+      "1 manga corta": 5,
+      "2 mangas cortas": 10
+    },
+    "Tallaje": {
+      "Talla": 0,
+      "A medida": 10
+    }
+  },
+  "varios": ["Tejido"],
+  "productos": ["Maillot de competición", "Maillot de entrenamiento"],
+  "tallas": ["4 años", "6 años", "8 años", "10 años", "12 años", "14 años", "XS", "S", "M", "L", "XL"]
+}

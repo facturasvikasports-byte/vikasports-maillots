@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+pedidos.db
+.streamlit/secrets.toml
+.claude/
+pedido-maillots.html
+Abrir programa.bat
