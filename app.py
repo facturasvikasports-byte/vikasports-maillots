@@ -9,6 +9,8 @@ import hmac
 import html
 import io
 import json
+import urllib.parse
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 
@@ -204,9 +206,15 @@ def secreto(nombre):
         return ""
 
 
-@st.cache_resource
 def motor():
     """Conexión a la base de datos: Supabase en internet, o el archivo pedidos.db en tu ordenador."""
+    # Se pasan las columnas para que, si el programa trae columnas nuevas,
+    # se vuelva a preparar la tabla aunque la conexión ya estuviera abierta.
+    return motor_para(tuple(COLUMNAS))
+
+
+@st.cache_resource
+def motor_para(columnas):
     url = secreto("DATABASE_URL")
     if url:
         url = url.replace("postgres://", "postgresql+psycopg://", 1).replace("postgresql://", "postgresql+psycopg://", 1)
@@ -408,6 +416,53 @@ def datos_que_faltan(config):
     return [etiqueta for etiqueta, hecho in requisitos(config) if not hecho]
 
 
+def texto_pedido(numero, p):
+    """Todos los datos del pedido en un mensaje de WhatsApp."""
+    filas = [
+        f"*NUEVO PEDIDO N.º {numero}* · {p['fecha']}",
+        "",
+        "*Cliente*",
+        f"Nombre: {p['nombre']}",
+        f"Teléfono: {p['telefono']}",
+        f"Email: {p['email'] or '-'}",
+        f"Ciudad: {p['ciudad']}",
+        f"Club: {p['club'] or '-'}",
+        "",
+        "*Maillot*",
+        f"Gimnasta: {p['gimnasta']}",
+        f"Producto: {p['producto']}",
+        f"Cantidad: {p['cantidad']}",
+        f"Técnica: {p['tecnica']}",
+    ]
+    for etiqueta, col in [("Diseño", "diseno"), ("Forro", "forro"), ("Tejido", "tejido"),
+                          ("Falda", "falda"), ("Mangas", "mangas"), ("Tallaje", "tallaje"), ("Talla", "talla")]:
+        if p[col]:
+            filas.append(f"{etiqueta}: {p[col]}")
+    if p["medidas"]:
+        filas += ["", "*Medidas (cm)*"] + [b.strip() for b in p["medidas"].split(";")]
+    filas += ["", f"Complementos: {p['complementos'] or '-'}", f"Descripción: {p['descripcion'] or '-'}", ""]
+    if p["total"] is None:
+        filas.append("*Precio: consultar (recorte)*")
+    else:
+        filas.append(f"Precio por maillot: {euros(p['precio_unidad'])}")
+        filas.append(f"*TOTAL: {euros(p['total'])}*")
+    return "\n".join(filas)
+
+
+def avisar_por_whatsapp(mensaje):
+    """Manda el pedido al WhatsApp de Vika Sports con CallMeBot, si está configurado.
+    Si falla, el pedido ya está guardado igualmente."""
+    clave = secreto("CALLMEBOT_APIKEY")
+    if not clave:
+        return
+    url = "https://api.callmebot.com/whatsapp.php?" + urllib.parse.urlencode(
+        {"phone": "+34" + WHATSAPP_NUMERO.replace(" ", ""), "text": mensaje, "apikey": clave})
+    try:
+        urllib.request.urlopen(url, timeout=15).read()
+    except Exception:
+        pass
+
+
 def enviar_pedido(config):
     s = st.session_state
     faltan = datos_que_faltan(config)
@@ -425,7 +480,7 @@ def enviar_pedido(config):
     if elecciones.get("Tallaje") == "A medida":
         bloques = medidas_visibles()
         medidas = "; ".join(
-            f"{b}: " + ", ".join(f"{m} {s.get('m_' + m) or '-'} cm" for m in MEDIDAS[b]) for b in bloques
+            f"{b}: " + ", ".join(f"{m} {s['m_' + m]:g} cm" if s.get("m_" + m) else f"{m} -" for m in MEDIDAS[b]) for b in bloques
         )
 
     pedido = {
@@ -442,6 +497,8 @@ def enviar_pedido(config):
         "total": None if recorte else total,
     }
     numero = guardar_pedido(pedido)
+    s.ultimo_pedido = texto_pedido(numero, pedido)
+    avisar_por_whatsapp(s.ultimo_pedido)
     if recorte:
         s.aviso = ("ok", f"¡Pedido n.º {numero} enviado! Te contactaremos con el precio para confirmarlo.")
     else:
@@ -627,6 +684,13 @@ def pagina_pedido():
             if aviso[0] == "ok":
                 st.success(aviso[1], icon="🎉")
                 st.balloons()
+                resumen = st.session_state.pop("ultimo_pedido", "")
+                if resumen:
+                    st.markdown("**Último paso: mándanos el pedido por WhatsApp** para que lo veamos al momento.")
+                    st.link_button("Enviar mi pedido por WhatsApp", type="primary", width="stretch",
+                                   url=f"{WHATSAPP_ENLACE}?text={urllib.parse.quote(resumen)}")
+                    with st.expander("Ver el resumen de mi pedido", expanded=True):
+                        st.text(resumen.replace("*", ""))
             else:
                 st.error(aviso[1])
 
