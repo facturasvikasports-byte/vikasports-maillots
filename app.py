@@ -52,7 +52,7 @@ LADOS_MANGA = ["Brazo derecho", "Brazo izquierdo"]
 # Campos de la base de datos, en el orden en que se muestran y exportan.
 COLUMNAS = [
     "id", "fecha", "estado", "nombre", "ciudad", "club", "telefono", "email",
-    "producto", "cantidad", "gimnasta", "tecnica", "diseno", "forro", "tejido", "falda", "mangas", "tallaje",
+    "producto", "cantidad", "gimnasta", "modelo", "tecnica", "diseno", "forro", "tejido", "falda", "mangas", "tallaje",
     "talla", "medidas", "extras", "imagenes", "complementos", "descripcion", "precio_unidad", "total",
 ]
 
@@ -251,7 +251,7 @@ def preparar_tablas(eng):
                 fecha TEXT, estado TEXT,
                 nombre TEXT, ciudad TEXT, club TEXT, telefono TEXT, email TEXT,
                 producto TEXT, cantidad INTEGER,
-                gimnasta TEXT, tecnica TEXT, diseno TEXT, forro TEXT, tejido TEXT, falda TEXT, mangas TEXT, tallaje TEXT,
+                gimnasta TEXT, modelo TEXT, tecnica TEXT, diseno TEXT, forro TEXT, tejido TEXT, falda TEXT, mangas TEXT, tallaje TEXT,
                 talla TEXT, medidas TEXT, extras TEXT, imagenes TEXT, complementos TEXT, descripcion TEXT,
                 precio_unidad {decimal}, total {decimal}
             )"""))
@@ -527,6 +527,7 @@ def texto_pedido(numero, p):
         "",
         "*Maillot*",
         f"Gimnasta: {p['gimnasta']}",
+        *([f"*Modelo de catálogo: {p['modelo']}*"] if p.get("modelo") else []),
         f"Producto: {p['producto']}",
         f"Cantidad: {int(p['cantidad'] or 0)}",
         f"Técnica: {p['tecnica']}",
@@ -606,6 +607,7 @@ def enviar_pedido(config):
         "medidas": medidas,
         "extras": "; ".join(f"{c} ({euros(p)})" for c, p in extras),
         "imagenes": ", ".join(nombre for nombre, _ in imagenes),
+        "modelo": texto_modelo(s.get("modelo")),
         # Con recorte el precio se consulta: se deja en blanco.
         "precio_unidad": None if recorte else unidad,
         "total": None if recorte else total,
@@ -633,6 +635,7 @@ def enviar_pedido(config):
             s[clave_extra(grupo)] = None
     # El campo de imágenes no se puede vaciar: se cambia por uno nuevo.
     s.n_formulario = s.get("n_formulario", 0) + 1
+    s.modelo = None
     s.talla = None
     s.manga_lado = None
     s.es_mono = False
@@ -647,6 +650,58 @@ def imagen_en_linea(nombre):
 
 WHATSAPP_NUMERO = "662 448 237"
 WHATSAPP_ENLACE = "https://wa.me/34662448237"
+
+# Catálogo de maillots: el botón «Lo quiero» abre este formulario con ?modelo=VKS-221
+CATALOGO_URL = "https://facturasvikasports-byte.github.io/catalogo/"
+ARCHIVO_CATALOGO = CARPETA / "catalogo.json"
+
+
+@st.cache_data
+def cargar_catalogo():
+    """{código: {nombre, seccion}} de los modelos del catálogo."""
+    try:
+        return json.loads(ARCHIVO_CATALOGO.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def texto_modelo(codigo):
+    if not codigo:
+        return ""
+    datos = cargar_catalogo().get(codigo, {})
+    return f"{codigo} · {datos['nombre']}" if datos else codigo
+
+
+def modelo_de_enlace():
+    """Si se llega desde el catálogo (?modelo=VKS-221), deja elegido ese modelo y «De catálogo»."""
+    s = st.session_state
+    codigo = st.query_params.get("modelo")
+    if codigo and codigo in cargar_catalogo() and s.get("modelo_del_enlace") != codigo:
+        s.modelo_del_enlace = codigo
+        s.modelo = codigo
+        s[clave_grupo("Diseño")] = "De catálogo"
+
+
+def quitar_modelo():
+    st.session_state.modelo = None
+    st.query_params.pop("modelo", None)
+
+
+def bloque_modelo():
+    """Tarjeta con el modelo elegido en el catálogo, o un enlace para ir a verlo."""
+    codigo = st.session_state.get("modelo")
+    if not codigo:
+        st.markdown(f"¿Aún no tienes diseño? **[Mira nuestro catálogo de maillots →]({CATALOGO_URL})**")
+        return
+    datos = cargar_catalogo().get(codigo, {})
+    with st.container(border=True):
+        foto, texto = st.columns([1, 3], vertical_alignment="center")
+        foto.image(f"{CATALOGO_URL}{codigo}-frente.webp", width=110)
+        texto.markdown(f"**Modelo elegido del catálogo**  \n### {datos.get('nombre', codigo)}\n"
+                       f"{codigo} · {datos.get('seccion', '')}")
+        a, b = texto.columns(2)
+        a.link_button("Cambiar modelo", f"{CATALOGO_URL}#{codigo}", width="stretch")
+        b.button("Quitar", on_click=quitar_modelo, width="stretch")
 ICONO_WHATSAPP = (
     "<svg viewBox='0 0 24 24' aria-hidden='true'><path d='M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148"
     "-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761"
@@ -727,6 +782,7 @@ def tarjeta_resumen(lineas, unidad, cantidad, total, extras=(), consultar=False)
 
 def pagina_pedido():
     config = cargar_config()
+    modelo_de_enlace()
     mostrar_html(
         f"""<div class="cabecera">{CINTA}
         <span class="etiqueta">Maillots de gimnasia rítmica</span>
@@ -749,6 +805,7 @@ def pagina_pedido():
 
         with st.container(border=True):
             paso(2, "Tu maillot", "Toca una opción en cada grupo.")
+            bloque_modelo()
             a, b = st.columns([3, 1])
             a.text_input("Nombre de la gimnasta *", key="gimnasta", placeholder="Ej.: Lucía")
             b.number_input("Cantidad *", min_value=1, step=1, key="cantidad")
@@ -857,7 +914,7 @@ NOMBRES = {
     "club": "Club", "telefono": "Teléfono", "email": "Email", "producto": "Producto",
     "cantidad": "Cant.", "gimnasta": "Gimnasta", "tecnica": "Técnica", "diseno": "Diseño",
     "forro": "Forro", "tejido": "Tejido", "falda": "Falda",
-    "mangas": "Mangas", "tallaje": "Tallaje", "talla": "Talla", "medidas": "Medidas", "extras": "Extras", "imagenes": "Imágenes",
+    "mangas": "Mangas", "tallaje": "Tallaje", "talla": "Talla", "medidas": "Medidas", "extras": "Extras", "imagenes": "Imágenes", "modelo": "Modelo de catálogo",
     "complementos": "Complementos", "descripcion": "Descripción y observaciones", "precio_unidad": "Precio/ud.",
     "total": "Total",
 }
