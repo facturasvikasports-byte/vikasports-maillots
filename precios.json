@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "precio_base": 60,
   "opciones": {
     "Técnica": {
@@ -9,9 +10,13 @@
       "Diseño personalizado": 20,
       "De catálogo": 0
     },
-    "Tejido": {
+    "Forro": {
       "Forrado": 20,
-      "Licra + gasa": 20
+      "Sin forro": 0
+    },
+    "Tejido": {
+      "Licra + gasa": 20,
+      "Licra sola": 0
     },
     "Falda": {
       "Sin falda": 0,
@@ -32,7 +37,7 @@
       "A medida": 10
     }
   },
-  "varios": ["Tejido"],
-  "productos": ["Maillot de competición", "Maillot de entrenamiento"],
-  "tallas": ["4 años", "6 años", "8 años", "10 años", "12 años", "14 años", "XS", "S", "M", "L", "XL"]
+  "varios": [],
+  "productos": ["Maillot de competición"],
+  "tallas": ["4", "6", "8", "10", "12", "14", "XS", "S", "M", "L", "XL"]
 }

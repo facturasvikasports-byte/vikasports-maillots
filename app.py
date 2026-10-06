@@ -22,12 +22,22 @@ BASE_DATOS = CARPETA / "pedidos.db"
 IMAGENES = CARPETA / "imagenes"
 
 ESTADOS = ["Nuevo", "Presupuesto enviado", "Confirmado", "En confección", "Entregado", "Cancelado"]
-MEDIDAS = ["Altura", "Pecho", "Cintura", "Cadera", "Tiro (hombro a entrepierna)", "Largo de brazo"]
+# Medidas que se piden cuando el maillot es a medida, por bloques.
+MEDIDAS = {
+    "Cuerpo": ["Pecho", "Cintura", "Cadera", "Tiro espalda", "Tiro total", "Braga"],
+    "Manga": ["Manga larga", "Bíceps", "Muñeca"],
+    "Mono": ["Tiro exterior", "Muslo", "Gemelo", "Tobillo"],
+}
+TODAS_LAS_MEDIDAS = [m for lista in MEDIDAS.values() for m in lista]
+
+# Con la técnica de recorte el precio se consulta y estos grupos no se muestran.
+OCULTOS_EN_RECORTE = ["Diseño", "Forro", "Tejido", "Tallaje"]
+LADOS_MANGA = ["Brazo derecho", "Brazo izquierdo"]
 
 # Campos de la base de datos, en el orden en que se muestran y exportan.
 COLUMNAS = [
     "id", "fecha", "estado", "nombre", "ciudad", "club", "telefono", "email",
-    "producto", "cantidad", "gimnasta", "tecnica", "diseno", "tejido", "falda", "mangas", "tallaje",
+    "producto", "cantidad", "gimnasta", "tecnica", "diseno", "forro", "tejido", "falda", "mangas", "tallaje",
     "talla", "medidas", "complementos", "descripcion", "precio_unidad", "total",
 ]
 
@@ -218,7 +228,7 @@ def preparar_tablas(eng):
                 fecha TEXT, estado TEXT,
                 nombre TEXT, ciudad TEXT, club TEXT, telefono TEXT, email TEXT,
                 producto TEXT, cantidad INTEGER,
-                gimnasta TEXT, tecnica TEXT, diseno TEXT, tejido TEXT, falda TEXT, mangas TEXT, tallaje TEXT,
+                gimnasta TEXT, tecnica TEXT, diseno TEXT, forro TEXT, tejido TEXT, falda TEXT, mangas TEXT, tallaje TEXT,
                 talla TEXT, medidas TEXT, complementos TEXT, descripcion TEXT,
                 precio_unidad {decimal}, total {decimal}
             )"""))
@@ -237,12 +247,17 @@ def preparar_tablas(eng):
 
 @st.cache_data(ttl=300)
 def cargar_config():
-    """Precios y opciones. La primera vez se copian de precios.json a la base de datos."""
+    """Precios y opciones. La primera vez, o cuando precios.json trae una versión nueva
+    de las opciones, se copian de precios.json a la base de datos."""
+    archivo = ARCHIVO_PRECIOS.read_text(encoding="utf-8")
     with motor().begin() as con:
         valor = con.execute(text("SELECT valor FROM configuracion WHERE clave = 'precios'")).scalar()
         if valor is None:
-            valor = ARCHIVO_PRECIOS.read_text(encoding="utf-8")
+            valor = archivo
             con.execute(text("INSERT INTO configuracion (clave, valor) VALUES ('precios', :v)"), {"v": valor})
+        elif json.loads(valor).get("version", 1) < json.loads(archivo).get("version", 1):
+            valor = archivo
+            con.execute(text("UPDATE configuracion SET valor = :v WHERE clave = 'precios'"), {"v": valor})
     return json.loads(valor)
 
 
@@ -325,7 +340,7 @@ OBLIGATORIOS = {"nombre": "Nombre y apellido", "ciudad": "Ciudad", "telefono": "
 
 # Columna de la base de datos donde se guarda cada grupo de opciones.
 COLUMNA_DE_GRUPO = {
-    "Técnica": "tecnica", "Diseño": "diseno", "Tejido": "tejido",
+    "Técnica": "tecnica", "Diseño": "diseno", "Forro": "forro", "Tejido": "tejido",
     "Falda": "falda", "Mangas": "mangas", "Tallaje": "tallaje",
 }
 
@@ -339,17 +354,58 @@ def es_varios(config, grupo):
     return grupo in config.get("varios", [])
 
 
+def es_recorte():
+    return st.session_state.get(clave_grupo("Técnica")) == "Recorte"
+
+
+def grupos_visibles(config):
+    return [g for g in config["opciones"] if not (es_recorte() and g in OCULTOS_EN_RECORTE)]
+
+
 def grupos_obligatorios(config):
-    return [g for g in config["opciones"] if not es_varios(config, g)]
+    return [g for g in grupos_visibles(config) if not es_varios(config, g)]
+
+
+def elecciones_actuales(config):
+    """Opciones elegidas en los grupos que se ven. El recorte siempre es a medida."""
+    elecciones = {g: st.session_state.get(clave_grupo(g)) for g in grupos_visibles(config)}
+    if es_recorte():
+        elecciones["Tallaje"] = "A medida"
+    return elecciones
+
+
+def una_manga():
+    """Si se ha elegido una sola manga, hay que decir en qué brazo va."""
+    return (st.session_state.get(clave_grupo("Mangas")) or "").startswith("1 manga")
+
+
+def lleva_manga_larga():
+    return "larga" in (st.session_state.get(clave_grupo("Mangas")) or "")
+
+
+def medidas_visibles():
+    bloques = ["Cuerpo"]
+    if lleva_manga_larga():
+        bloques.append("Manga")
+    if st.session_state.get("es_mono"):
+        bloques.append("Mono")
+    return bloques
+
+
+def requisitos(config):
+    """Cada dato obligatorio con si ya está rellenado o no."""
+    s = st.session_state
+    lista = [(etiqueta, bool(s.get(clave, "").strip())) for clave, etiqueta in OBLIGATORIOS.items()]
+    lista += [(g, bool(s.get(clave_grupo(g)))) for g in grupos_obligatorios(config)]
+    if elecciones_actuales(config).get("Tallaje") == "Talla":
+        lista.append(("Talla", bool(s.get("talla"))))
+    if una_manga():
+        lista.append(("Brazo de la manga", bool(s.get("manga_lado"))))
+    return lista
 
 
 def datos_que_faltan(config):
-    s = st.session_state
-    faltan = [etiqueta for clave, etiqueta in OBLIGATORIOS.items() if not s.get(clave, "").strip()]
-    faltan += [g for g in grupos_obligatorios(config) if not s.get(clave_grupo(g))]
-    if s.get(clave_grupo("Tallaje")) == "Talla" and not s.get("talla"):
-        faltan.append("Talla")
-    return faltan
+    return [etiqueta for etiqueta, hecho in requisitos(config) if not hecho]
 
 
 def enviar_pedido(config):
@@ -359,12 +415,18 @@ def enviar_pedido(config):
         s.aviso = ("error", "Te falta rellenar: " + ", ".join(faltan) + ".")
         return
 
-    elecciones = {g: s.get(clave_grupo(g)) for g in config["opciones"]}
+    elecciones = elecciones_actuales(config)
+    recorte = es_recorte()
     _, unidad, total = calcular(config, elecciones, s.cantidad)
     texto_de = {g: ", ".join(v) if isinstance(v, list) else (v or "") for g, v in elecciones.items()}
+    if una_manga():
+        texto_de["Mangas"] += f" ({s.manga_lado.lower()})"
     medidas = ""
     if elecciones.get("Tallaje") == "A medida":
-        medidas = ", ".join(f"{m}: {s.get('m_' + m) or '-'} cm" for m in MEDIDAS)
+        bloques = medidas_visibles()
+        medidas = "; ".join(
+            f"{b}: " + ", ".join(f"{m} {s.get('m_' + m) or '-'} cm" for m in MEDIDAS[b]) for b in bloques
+        )
 
     pedido = {
         "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -375,20 +437,26 @@ def enviar_pedido(config):
         **{col: texto_de.get(grupo, "") for grupo, col in COLUMNA_DE_GRUPO.items()},
         "talla": (s.get("talla") or "") if elecciones.get("Tallaje") == "Talla" else "",
         "medidas": medidas,
-        "precio_unidad": unidad,
-        "total": total,
+        # Con recorte el precio se consulta: se deja en blanco.
+        "precio_unidad": None if recorte else unidad,
+        "total": None if recorte else total,
     }
     numero = guardar_pedido(pedido)
-    s.aviso = ("ok", f"¡Pedido n.º {numero} enviado! Total: {euros(total)}. Te contactaremos para confirmarlo.")
+    if recorte:
+        s.aviso = ("ok", f"¡Pedido n.º {numero} enviado! Te contactaremos con el precio para confirmarlo.")
+    else:
+        s.aviso = ("ok", f"¡Pedido n.º {numero} enviado! Total: {euros(total)}. Te contactaremos para confirmarlo.")
 
     # Vaciar el formulario para el siguiente pedido.
     for c in TEXTOS:
         s[c] = ""
     for g in config["opciones"]:
         s[clave_grupo(g)] = [] if es_varios(config, g) else None
-    for m in MEDIDAS:
+    for m in TODAS_LAS_MEDIDAS:
         s["m_" + m] = None
     s.talla = None
+    s.manga_lado = None
+    s.es_mono = False
     s.cantidad = 1
 
 
@@ -443,24 +511,35 @@ def paso(numero, titulo, texto):
 
 
 def con_precio(opciones):
+    if es_recorte():
+        return lambda o: o  # con recorte no se muestran precios
     return lambda o: f"{o} · +{euros(opciones[o])}" if opciones.get(o) else o
 
 
-def tarjeta_resumen(lineas, unidad, cantidad, total):
+def tarjeta_resumen(lineas, unidad, cantidad, total, consultar=False):
+    if consultar:
+        # Recorte: se listan las opciones elegidas, sin precios.
+        lineas = [(c, None) for c, _ in lineas if c != "Precio base"]
     if lineas:
         filas = "".join(
-            f"<li><span>{html.escape(c)}</span><span>{euros(p)}</span></li>" for c, p in lineas
+            f"<li><span>{html.escape(c)}</span><span>{'' if p is None else euros(p)}</span></li>" for c, p in lineas
         )
         cuerpo = f"<ul>{filas}</ul>"
     else:
         cuerpo = "<div class='vacio'>Elige las opciones del maillot y aquí verás el precio.</div>"
+    if consultar:
+        cuentas = f"""
+      <div class="cuentas"><span>Cantidad</span><span>× {cantidad}</span></div>
+      <div class="total"><b>Precio</b><strong style="font-size:1.5rem">Consultar precio</strong></div>"""
+    else:
+        cuentas = f"""
+      <div class="cuentas"><span>Precio por maillot</span><span>{euros(unidad)}</span></div>
+      <div class="cuentas"><span>Cantidad</span><span>× {cantidad}</span></div>
+      <div class="total"><b>Total</b><strong>{euros(total)}</strong></div>"""
     return f"""
     <div class="resumen ancla-resumen">
       <div class="arriba"><span class="eti">Presupuesto</span><h3>Tu maillot</h3></div>
-      {cuerpo}
-      <div class="cuentas"><span>Precio por maillot</span><span>{euros(unidad)}</span></div>
-      <div class="cuentas"><span>Cantidad</span><span>× {cantidad}</span></div>
-      <div class="total"><b>Total</b><strong>{euros(total)}</strong></div>
+      {cuerpo}{cuentas}
     </div>"""
 
 
@@ -492,21 +571,32 @@ def pagina_pedido():
             a.text_input("Nombre de la gimnasta *", key="gimnasta", placeholder="Ej.: Lucía")
             b.number_input("Cantidad *", min_value=1, step=1, key="cantidad")
             st.pills("Producto", config["productos"], key="producto", default=config["productos"][0])
-            for grupo, opciones in config["opciones"].items():
+            for grupo in grupos_visibles(config):
+                opciones = config["opciones"][grupo]
                 if es_varios(config, grupo):
                     st.pills(f"{grupo} (opcional, puedes elegir varios)", list(opciones), key=clave_grupo(grupo),
                              selection_mode="multi", format_func=con_precio(opciones))
                 else:
                     st.pills(f"{grupo} *", list(opciones), key=clave_grupo(grupo), format_func=con_precio(opciones))
+                if grupo == "Mangas" and una_manga():
+                    st.pills("¿En qué brazo va la manga? *", LADOS_MANGA, key="manga_lado")
 
-            tallaje = st.session_state.get(clave_grupo("Tallaje"))
+            if es_recorte():
+                st.info("Con la técnica de recorte el maillot se hace a medida y el precio se consulta. "
+                        "Te enviaremos el presupuesto.")
+
+            tallaje = elecciones_actuales(config).get("Tallaje")
             if tallaje == "Talla":
                 st.pills("Elige la talla *", config["tallas"], key="talla")
             elif tallaje == "A medida":
                 st.markdown("**Medidas de la gimnasta, en centímetros**")
-                cols = st.columns(3)
-                for i, m in enumerate(MEDIDAS):
-                    cols[i % 3].number_input(m, min_value=0.0, step=0.5, value=None, key="m_" + m, placeholder="cm")
+                st.toggle("Es un mono (con piernas)", key="es_mono")
+                for bloque in medidas_visibles():
+                    st.markdown(f"*{bloque}*")
+                    cols = st.columns(3)
+                    for i, m in enumerate(MEDIDAS[bloque]):
+                        cols[i % 3].number_input(m, min_value=0.0, step=0.5, value=None, key="m_" + m,
+                                                 placeholder="cm")
 
         with st.container(border=True):
             paso(3, "Detalles", "Opcional. Cuéntanos qué más necesitas.")
@@ -517,14 +607,13 @@ def pagina_pedido():
                          placeholder="Toca aquí y escribe cómo imaginas el maillot: colores, estampado, pedrería, música…")
 
     with derecha:
-        elecciones = {g: st.session_state.get(clave_grupo(g)) for g in config["opciones"]}
+        elecciones = elecciones_actuales(config)
         cantidad = st.session_state.get("cantidad", 1)
         lineas, unidad, total = calcular(config, elecciones, cantidad)
-        mostrar_html(tarjeta_resumen(lineas, unidad, cantidad, total))
+        mostrar_html(tarjeta_resumen(lineas, unidad, cantidad, total, consultar=es_recorte()))
 
         faltan = datos_que_faltan(config)
-        pide_talla = st.session_state.get(clave_grupo("Tallaje")) == "Talla"
-        necesarios = len(OBLIGATORIOS) + len(grupos_obligatorios(config)) + (1 if pide_talla else 0)
+        necesarios = len(requisitos(config))
         hechos = necesarios - len(faltan)
         st.progress(hechos / necesarios,
                     text="¡Todo listo para enviar!" if not faltan else f"Te faltan {len(faltan)} datos obligatorios")
@@ -547,13 +636,14 @@ def pagina_pedido():
 # Columnas por las que se puede filtrar, con su nombre visible.
 FILTROS = {
     "ciudad": "Ciudad", "club": "Club", "producto": "Producto", "tecnica": "Técnica",
-    "diseno": "Diseño", "tejido": "Tejido", "falda": "Falda", "mangas": "Mangas", "tallaje": "Tallaje", "talla": "Talla", "estado": "Estado",
+    "diseno": "Diseño", "forro": "Forro", "tejido": "Tejido", "falda": "Falda", "mangas": "Mangas",
+    "tallaje": "Tallaje", "talla": "Talla", "estado": "Estado",
 }
 NOMBRES = {
     "id": "N.º", "fecha": "Fecha", "estado": "Estado", "nombre": "Cliente", "ciudad": "Ciudad",
     "club": "Club", "telefono": "Teléfono", "email": "Email", "producto": "Producto",
     "cantidad": "Cant.", "gimnasta": "Gimnasta", "tecnica": "Técnica", "diseno": "Diseño",
-    "tejido": "Tejido", "falda": "Falda",
+    "forro": "Forro", "tejido": "Tejido", "falda": "Falda",
     "mangas": "Mangas", "tallaje": "Tallaje", "talla": "Talla", "medidas": "Medidas",
     "complementos": "Complementos", "descripcion": "Descripción y observaciones", "precio_unidad": "Precio/ud.",
     "total": "Total",
@@ -676,7 +766,7 @@ def pagina_base_datos():
     with pestana_resumen:
         st.caption("Cuántos maillots se han pedido de cada tipo, con los filtros aplicados.")
         columnas = st.columns(2)
-        for i, col in enumerate(["ciudad", "tecnica", "diseno", "falda", "mangas", "tallaje", "producto"]):
+        for i, col in enumerate(["ciudad", "tecnica", "diseno", "forro", "tejido", "falda", "mangas", "tallaje", "producto"]):
             conteo = (vista[vista[col].fillna("") != ""].groupby(col)["cantidad"].sum()
                       .sort_values(ascending=False).rename("Maillots"))
             with columnas[i % 2]:
@@ -695,7 +785,8 @@ def pagina_precios():
     config = cargar_config()
     st.title("Precios")
     st.caption("Escribe el precio de cada opción en euros y pulsa Guardar precios. "
-               "El formulario de pedido se actualiza al momento.")
+               "El formulario de pedido se actualiza al momento. "
+               "Con la técnica de recorte no se calcula precio: al cliente le sale «Consultar precio».")
 
     base = st.number_input("Precio base del maillot (€)", min_value=0.0, step=1.0,
                            value=float(config["precio_base"]),
