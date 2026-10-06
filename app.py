@@ -76,6 +76,8 @@ ESTILO = """
 
 /* Barra superior con el logo, siempre visible */
 header[data-testid="stHeader"] { background: transparent; }
+/* Sin la barra de Streamlit (Fork, GitHub, menú): así no tapa el botón de WhatsApp */
+[data-testid="stToolbar"], [data-testid="stDecoration"] { display: none !important; }
 header[data-testid="stHeader"], header[data-testid="stHeader"] * { pointer-events: none !important; }
 header[data-testid="stHeader"] button, header[data-testid="stHeader"] button *,
 header[data-testid="stHeader"] a { pointer-events: auto !important; }
