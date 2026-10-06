@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
+from PIL import Image, ImageOps
 from sqlalchemy import create_engine, inspect, text
 
 CARPETA = Path(__file__).parent
@@ -52,7 +53,7 @@ LADOS_MANGA = ["Brazo derecho", "Brazo izquierdo"]
 COLUMNAS = [
     "id", "fecha", "estado", "nombre", "ciudad", "club", "telefono", "email",
     "producto", "cantidad", "gimnasta", "tecnica", "diseno", "forro", "tejido", "falda", "mangas", "tallaje",
-    "talla", "medidas", "extras", "complementos", "descripcion", "precio_unidad", "total",
+    "talla", "medidas", "extras", "imagenes", "complementos", "descripcion", "precio_unidad", "total",
 ]
 
 ESTILO = """
@@ -251,14 +252,20 @@ def preparar_tablas(eng):
                 nombre TEXT, ciudad TEXT, club TEXT, telefono TEXT, email TEXT,
                 producto TEXT, cantidad INTEGER,
                 gimnasta TEXT, tecnica TEXT, diseno TEXT, forro TEXT, tejido TEXT, falda TEXT, mangas TEXT, tallaje TEXT,
-                talla TEXT, medidas TEXT, extras TEXT, complementos TEXT, descripcion TEXT,
+                talla TEXT, medidas TEXT, extras TEXT, imagenes TEXT, complementos TEXT, descripcion TEXT,
                 precio_unidad {decimal}, total {decimal}
             )"""))
         con.execute(text("CREATE TABLE IF NOT EXISTS configuracion (clave TEXT PRIMARY KEY, valor TEXT)"))
+        # Imágenes de diseño que adjunta el cliente, unidas a su pedido.
+        con.execute(text(f"""
+            CREATE TABLE IF NOT EXISTS imagenes (
+                {clave}, pedido_id INTEGER, nombre TEXT, datos {"BYTEA" if postgres else "BLOB"}
+            )"""))
         if postgres:
             # En Supabase: nadie más que el programa puede leer o cambiar estas tablas.
             con.execute(text("ALTER TABLE pedidos ENABLE ROW LEVEL SECURITY"))
             con.execute(text("ALTER TABLE configuracion ENABLE ROW LEVEL SECURITY"))
+            con.execute(text("ALTER TABLE imagenes ENABLE ROW LEVEL SECURITY"))
     # Añadir las columnas nuevas a una base de datos creada con una versión anterior.
     existentes = {c["name"] for c in inspect(eng).get_columns("pedidos")}
     with eng.begin() as con:
@@ -309,13 +316,39 @@ def guardar_config(config):
     cargar_config.clear()
 
 
-def guardar_pedido(pedido):
+def guardar_pedido(pedido, imagenes=()):
+    """Guarda el pedido y sus imágenes de diseño. Devuelve el número de pedido."""
     campos = [c for c in COLUMNAS if c != "id"]
     with motor().begin() as con:
-        return con.execute(
+        numero = con.execute(
             text(f"INSERT INTO pedidos ({', '.join(campos)}) VALUES ({', '.join(':' + c for c in campos)}) RETURNING id"),
             {c: pedido[c] for c in campos},
         ).scalar()
+        for nombre, datos in imagenes:
+            con.execute(text("INSERT INTO imagenes (pedido_id, nombre, datos) VALUES (:p, :n, :d)"),
+                        {"p": numero, "n": nombre, "d": datos})
+    return numero
+
+
+def leer_imagenes(id_pedido):
+    with motor().connect() as con:
+        filas = con.execute(text("SELECT nombre, datos FROM imagenes WHERE pedido_id = :p ORDER BY id"),
+                            {"p": id_pedido}).all()
+    return [(nombre, bytes(datos)) for nombre, datos in filas]
+
+
+def preparar_imagen(archivo):
+    """Reduce la foto a 1600 px como máximo y la guarda en JPG, para no llenar la base de datos."""
+    imagen = ImageOps.exif_transpose(Image.open(archivo))
+    imagen.thumbnail((1600, 1600))
+    if imagen.mode in ("RGBA", "LA", "P"):
+        imagen = imagen.convert("RGBA")
+        fondo = Image.new("RGB", imagen.size, "white")
+        fondo.paste(imagen, mask=imagen.split()[-1])
+        imagen = fondo
+    salida = io.BytesIO()
+    imagen.convert("RGB").save(salida, "JPEG", quality=85)
+    return Path(archivo.name).stem + ".jpg", salida.getvalue()
 
 
 def leer_pedidos():
@@ -417,6 +450,10 @@ def clave_grupo(grupo):
     return "op_" + grupo
 
 
+def clave_disenos():
+    return f"disenos_{st.session_state.get('n_formulario', 0)}"
+
+
 def es_varios(config, grupo):
     """Grupos opcionales en los que se puede elegir más de una opción."""
     return grupo in config.get("varios", [])
@@ -502,6 +539,9 @@ def texto_pedido(numero, p):
         filas += ["", "*Medidas (cm)*"] + [b.strip() for b in p["medidas"].split(";")]
     if p.get("extras"):
         filas += ["", "*Extras*"] + [e.strip() for e in p["extras"].split(";")]
+    if p.get("imagenes"):
+        n = len(p["imagenes"].split(", "))
+        filas += ["", f"*Diseño:* {n} imagen{'es' if n > 1 else ''} adjunta{'s' if n > 1 else ''} en el pedido"]
     filas += ["", f"Complementos: {p['complementos'] or '-'}", f"Descripción: {p['descripcion'] or '-'}", ""]
     if p["tecnica"] == "Recorte":
         filas.append("*Precio: consultar (recorte)*")
@@ -532,6 +572,14 @@ def enviar_pedido(config):
         s.aviso = ("error", "Te falta rellenar: " + ", ".join(faltan) + ".")
         return
 
+    imagenes = []
+    for archivo in s.get(clave_disenos()) or []:
+        try:
+            imagenes.append(preparar_imagen(archivo))
+        except Exception:
+            s.aviso = ("error", f"No se pudo abrir la imagen «{archivo.name}». Prueba con una foto JPG o PNG.")
+            return
+
     elecciones = elecciones_actuales(config)
     recorte = es_recorte()
     _, unidad, total = calcular(config, elecciones, s.cantidad)
@@ -557,11 +605,12 @@ def enviar_pedido(config):
         "talla": (s.get("talla") or "") if elecciones.get("Tallaje") == "Talla" else "",
         "medidas": medidas,
         "extras": "; ".join(f"{c} ({euros(p)})" for c, p in extras),
+        "imagenes": ", ".join(nombre for nombre, _ in imagenes),
         # Con recorte el precio se consulta: se deja en blanco.
         "precio_unidad": None if recorte else unidad,
         "total": None if recorte else total,
     }
-    numero = guardar_pedido(pedido)
+    numero = guardar_pedido(pedido, imagenes)
     s.ultimo_pedido = texto_pedido(numero, pedido)
     avisar_por_whatsapp(s.ultimo_pedido)
     if recorte:
@@ -582,6 +631,8 @@ def enviar_pedido(config):
                 s[clave_extra(grupo, opcion)] = 0
         else:
             s[clave_extra(grupo)] = None
+    # El campo de imágenes no se puede vaciar: se cambia por uno nuevo.
+    s.n_formulario = s.get("n_formulario", 0) + 1
     s.talla = None
     s.manga_lado = None
     s.es_mono = False
@@ -701,6 +752,13 @@ def pagina_pedido():
             a, b = st.columns([3, 1])
             a.text_input("Nombre de la gimnasta *", key="gimnasta", placeholder="Ej.: Lucía")
             b.number_input("Cantidad *", min_value=1, step=1, key="cantidad")
+            disenos = st.file_uploader(
+                "📎 Adjunta la imagen del diseño que te gusta (opcional)", type=["jpg", "jpeg", "png", "webp"],
+                accept_multiple_files=True, key=clave_disenos(),
+                help="Una foto o captura del maillot o diseño de referencia. Trabajaremos el maillot a partir de ella.",
+            )
+            if disenos:
+                st.image(disenos[:6], width=110)
             st.pills("Producto", config["productos"], key="producto", default=config["productos"][0])
             for grupo in grupos_visibles(config):
                 opciones = config["opciones"][grupo]
@@ -799,7 +857,7 @@ NOMBRES = {
     "club": "Club", "telefono": "Teléfono", "email": "Email", "producto": "Producto",
     "cantidad": "Cant.", "gimnasta": "Gimnasta", "tecnica": "Técnica", "diseno": "Diseño",
     "forro": "Forro", "tejido": "Tejido", "falda": "Falda",
-    "mangas": "Mangas", "tallaje": "Tallaje", "talla": "Talla", "medidas": "Medidas", "extras": "Extras",
+    "mangas": "Mangas", "tallaje": "Tallaje", "talla": "Talla", "medidas": "Medidas", "extras": "Extras", "imagenes": "Imágenes",
     "complementos": "Complementos", "descripcion": "Descripción y observaciones", "precio_unidad": "Precio/ud.",
     "total": "Total",
 }
@@ -913,6 +971,13 @@ def pagina_base_datos():
             ficha = fichas[elegido]
             st.caption(f"Estado: {ficha['estado']}")
             st.text(texto_pedido(elegido, ficha).replace("*", ""))
+            imagenes = leer_imagenes(elegido)
+            if imagenes:
+                st.markdown("**Imágenes de diseño que adjuntó el cliente**")
+                for i, (nombre, datos) in enumerate(imagenes):
+                    st.image(datos, caption=nombre, width=420)
+                    st.download_button(f"Descargar {nombre}", datos, file_name=f"pedido-{elegido}-{nombre}",
+                                       mime="image/jpeg", key=f"img_{elegido}_{i}")
 
     with pestana_clientes:
         st.dataframe(
