@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "precio_base": 60,
   "opciones": {
     "Técnica": {
@@ -37,6 +37,36 @@
       "A medida": 10
     }
   },
+  "extras": {
+    "Piedras de coser de cristal": {
+      "por_unidad": true,
+      "opciones": {
+        "Básicas": 0.5,
+        "Especiales": 0.6,
+        "Colores": 0.6
+      }
+    },
+    "Piedras de coser de plástico": {
+      "opciones": {
+        "20 piedras": 5,
+        "40 piedras": 8,
+        "80 piedras": 15,
+        "120 piedras": 20,
+        "160 piedras": 26
+      }
+    },
+    "Cristales": {
+      "opciones": {
+        "350 cristales": 15,
+        "750 cristales": 20,
+        "1440 cristales": 30,
+        "2200 cristales": 45,
+        "3000 cristales": 60,
+        "3500 cristales": 70
+      }
+    }
+  },
+  "nota_piedras": "Las piedras de coser se entregan solo pegadas. Pregunta presupuesto para entregarlas cosidas.",
   "varios": [],
   "productos": ["Maillot de competición"],
   "tallas": ["4", "6", "8", "10", "12", "14", "XS", "S", "M", "L", "XL"]

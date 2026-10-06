@@ -52,7 +52,7 @@ LADOS_MANGA = ["Brazo derecho", "Brazo izquierdo"]
 COLUMNAS = [
     "id", "fecha", "estado", "nombre", "ciudad", "club", "telefono", "email",
     "producto", "cantidad", "gimnasta", "tecnica", "diseno", "forro", "tejido", "falda", "mangas", "tallaje",
-    "talla", "medidas", "complementos", "descripcion", "precio_unidad", "total",
+    "talla", "medidas", "extras", "complementos", "descripcion", "precio_unidad", "total",
 ]
 
 ESTILO = """
@@ -251,7 +251,7 @@ def preparar_tablas(eng):
                 nombre TEXT, ciudad TEXT, club TEXT, telefono TEXT, email TEXT,
                 producto TEXT, cantidad INTEGER,
                 gimnasta TEXT, tecnica TEXT, diseno TEXT, forro TEXT, tejido TEXT, falda TEXT, mangas TEXT, tallaje TEXT,
-                talla TEXT, medidas TEXT, complementos TEXT, descripcion TEXT,
+                talla TEXT, medidas TEXT, extras TEXT, complementos TEXT, descripcion TEXT,
                 precio_unidad {decimal}, total {decimal}
             )"""))
         con.execute(text("CREATE TABLE IF NOT EXISTS configuracion (clave TEXT PRIMARY KEY, valor TEXT)"))
@@ -278,9 +278,26 @@ def cargar_config():
             valor = archivo
             con.execute(text("INSERT INTO configuracion (clave, valor) VALUES ('precios', :v)"), {"v": valor})
         elif json.loads(valor).get("version", 1) < json.loads(archivo).get("version", 1):
-            valor = archivo
+            valor = json.dumps(actualizar_config(json.loads(valor), json.loads(archivo)), ensure_ascii=False, indent=2)
             con.execute(text("UPDATE configuracion SET valor = :v WHERE clave = 'precios'"), {"v": valor})
     return json.loads(valor)
+
+
+def actualizar_config(guardada, nueva):
+    """Toma las opciones de la versión nueva, pero conserva los precios que ya se
+    habían cambiado en la página Precios para las opciones que siguen existiendo."""
+    if guardada.get("version", 1) >= 2:  # la versión 1 tenía otras opciones: se sustituye entera
+        nueva["precio_base"] = guardada.get("precio_base", nueva["precio_base"])
+        for grupo, opciones in nueva["opciones"].items():
+            for opcion in opciones:
+                if opcion in guardada["opciones"].get(grupo, {}):
+                    opciones[opcion] = guardada["opciones"][grupo][opcion]
+        for grupo, datos in nueva.get("extras", {}).items():
+            antes = guardada.get("extras", {}).get(grupo, {}).get("opciones", {})
+            for opcion in datos["opciones"]:
+                if opcion in antes:
+                    datos["opciones"][opcion] = antes[opcion]
+    return nueva
 
 
 def guardar_config(config):
@@ -360,6 +377,27 @@ def calcular(config, elecciones, cantidad):
             unidad += precio
             lineas.append((f"{grupo}: {opcion}", precio))
     return lineas, unidad, unidad * cantidad
+
+
+def clave_extra(grupo, opcion=""):
+    return f"ex_{grupo}_{opcion}"
+
+
+def extras_elegidos(config):
+    """Extras del pedido como (concepto, precio). Se suman una vez al total, no por maillot."""
+    s = st.session_state
+    lineas = []
+    for grupo, datos in config.get("extras", {}).items():
+        if datos.get("por_unidad"):
+            for opcion, precio in datos["opciones"].items():
+                n = int(s.get(clave_extra(grupo, opcion)) or 0)
+                if n:
+                    lineas.append((f"{grupo} {opcion.lower()} × {n}", precio * n))
+        else:
+            opcion = s.get(clave_extra(grupo))
+            if opcion in datos["opciones"]:
+                lineas.append((f"{grupo}: {opcion}", datos["opciones"][opcion]))
+    return lineas
 
 
 # ---------------------------------------------------------------- página: nuevo pedido
@@ -462,6 +500,8 @@ def texto_pedido(numero, p):
             filas.append(f"{etiqueta}: {p[col]}")
     if p["medidas"]:
         filas += ["", "*Medidas (cm)*"] + [b.strip() for b in p["medidas"].split(";")]
+    if p.get("extras"):
+        filas += ["", "*Extras*"] + [e.strip() for e in p["extras"].split(";")]
     filas += ["", f"Complementos: {p['complementos'] or '-'}", f"Descripción: {p['descripcion'] or '-'}", ""]
     if p["tecnica"] == "Recorte":
         filas.append("*Precio: consultar (recorte)*")
@@ -495,6 +535,8 @@ def enviar_pedido(config):
     elecciones = elecciones_actuales(config)
     recorte = es_recorte()
     _, unidad, total = calcular(config, elecciones, s.cantidad)
+    extras = extras_elegidos(config)
+    total += sum(p for _, p in extras)
     texto_de = {g: ", ".join(v) if isinstance(v, list) else (v or "") for g, v in elecciones.items()}
     if una_manga():
         texto_de["Mangas"] += f" ({s.manga_lado.lower()})"
@@ -514,6 +556,7 @@ def enviar_pedido(config):
         **{col: texto_de.get(grupo, "") for grupo, col in COLUMNA_DE_GRUPO.items()},
         "talla": (s.get("talla") or "") if elecciones.get("Tallaje") == "Talla" else "",
         "medidas": medidas,
+        "extras": "; ".join(f"{c} ({euros(p)})" for c, p in extras),
         # Con recorte el precio se consulta: se deja en blanco.
         "precio_unidad": None if recorte else unidad,
         "total": None if recorte else total,
@@ -533,6 +576,12 @@ def enviar_pedido(config):
         s[clave_grupo(g)] = [] if es_varios(config, g) else None
     for m in TODAS_LAS_MEDIDAS:
         s["m_" + m] = None
+    for grupo, datos in config.get("extras", {}).items():
+        if datos.get("por_unidad"):
+            for opcion in datos["opciones"]:
+                s[clave_extra(grupo, opcion)] = 0
+        else:
+            s[clave_extra(grupo)] = None
     s.talla = None
     s.manga_lado = None
     s.es_mono = False
@@ -595,7 +644,9 @@ def con_precio(opciones):
     return lambda o: f"{o} · +{euros(opciones[o])}" if opciones.get(o) else o
 
 
-def tarjeta_resumen(lineas, unidad, cantidad, total, consultar=False):
+def tarjeta_resumen(lineas, unidad, cantidad, total, extras=(), consultar=False):
+    lineas = list(lineas) + [(f"Extra · {c}", p) for c, p in extras]
+    precio_extras = sum(p for _, p in extras)
     if consultar:
         # Recorte: se listan las opciones elegidas, sin precios.
         lineas = [(c, None) for c, _ in lineas if c != "Precio base"]
@@ -614,7 +665,8 @@ def tarjeta_resumen(lineas, unidad, cantidad, total, consultar=False):
         cuentas = f"""
       <div class="cuentas"><span>Precio por maillot</span><span>{euros(unidad)}</span></div>
       <div class="cuentas"><span>Cantidad</span><span>× {cantidad}</span></div>
-      <div class="total"><b>Total</b><strong>{euros(total)}</strong></div>"""
+      {f'<div class="cuentas"><span>Extras</span><span>+ {euros(precio_extras)}</span></div>' if extras else ''}
+      <div class="total"><b>Total</b><strong>{euros(total + precio_extras)}</strong></div>"""
     return f"""
     <div class="resumen ancla-resumen">
       <div class="arriba"><span class="eti">Presupuesto</span><h3>Tu maillot</h3></div>
@@ -677,8 +729,25 @@ def pagina_pedido():
                         cols[i % 3].number_input(m, min_value=0.0, step=0.5, value=None, key="m_" + m,
                                                  placeholder="cm")
 
+        if config.get("extras"):
+            with st.container(border=True):
+                paso(3, "Extras", "Opcional. Pedrería para decorar el maillot.")
+                for grupo, datos in config["extras"].items():
+                    opciones = datos["opciones"]
+                    if datos.get("por_unidad"):
+                        st.markdown(f"**{grupo}** · precio por piedra, escribe cuántas quieres")
+                        cols = st.columns(len(opciones))
+                        for col, (opcion, precio) in zip(cols, opciones.items()):
+                            col.number_input(f"{opcion} · {euros(precio)}/ud.", min_value=0, step=10, value=0,
+                                             key=clave_extra(grupo, opcion))
+                    else:
+                        st.pills(grupo, list(opciones), key=clave_extra(grupo),
+                                 format_func=lambda o, op=opciones: f"{o} · {euros(op[o])}")
+                    if grupo == "Piedras de coser de plástico" and config.get("nota_piedras"):
+                        st.info(config["nota_piedras"], icon="🪡")
+
         with st.container(border=True):
-            paso(3, "Detalles", "Opcional. Cuéntanos qué más necesitas.")
+            paso(4 if config.get("extras") else 3, "Detalles", "Opcional. Cuéntanos qué más necesitas.")
             st.text_area("Complementos por presupuestar", key="complementos", height=100,
                          placeholder="Toca aquí y escribe los complementos que quieres. Ej.: scrunchie a juego, funda…",
                          help="Te enviaremos el precio de los complementos aparte.")
@@ -689,7 +758,7 @@ def pagina_pedido():
         elecciones = elecciones_actuales(config)
         cantidad = st.session_state.get("cantidad", 1)
         lineas, unidad, total = calcular(config, elecciones, cantidad)
-        mostrar_html(tarjeta_resumen(lineas, unidad, cantidad, total, consultar=es_recorte()))
+        mostrar_html(tarjeta_resumen(lineas, unidad, cantidad, total, extras_elegidos(config), consultar=es_recorte()))
 
         faltan = datos_que_faltan(config)
         necesarios = len(requisitos(config))
@@ -730,7 +799,7 @@ NOMBRES = {
     "club": "Club", "telefono": "Teléfono", "email": "Email", "producto": "Producto",
     "cantidad": "Cant.", "gimnasta": "Gimnasta", "tecnica": "Técnica", "diseno": "Diseño",
     "forro": "Forro", "tejido": "Tejido", "falda": "Falda",
-    "mangas": "Mangas", "tallaje": "Tallaje", "talla": "Talla", "medidas": "Medidas",
+    "mangas": "Mangas", "tallaje": "Tallaje", "talla": "Talla", "medidas": "Medidas", "extras": "Extras",
     "complementos": "Complementos", "descripcion": "Descripción y observaciones", "precio_unidad": "Precio/ud.",
     "total": "Total",
 }
@@ -877,6 +946,19 @@ def pagina_base_datos():
 
 # ---------------------------------------------------------------- página: precios
 
+def editor_precios(opciones, clave, paso_precio=0.5):
+    """Tabla editable de opciones y precios. Devuelve {opción: precio}."""
+    tabla = pd.DataFrame({"Opción": list(opciones), "Precio (€)": list(opciones.values())})
+    editada = st.data_editor(
+        tabla, hide_index=True, width="stretch", num_rows="dynamic", key=clave,
+        column_config={"Precio (€)": st.column_config.NumberColumn(min_value=0, step=paso_precio, format="%.2f €")},
+    )
+    return {
+        str(f["Opción"]).strip(): float(f["Precio (€)"] or 0)
+        for _, f in editada.iterrows() if str(f["Opción"] or "").strip()
+    }
+
+
 def pagina_precios():
     if not acceso_gestion():
         return
@@ -895,19 +977,25 @@ def pagina_precios():
     for i, (grupo, opciones) in enumerate(config["opciones"].items()):
         with columnas[i % 2]:
             st.subheader(grupo)
-            tabla = pd.DataFrame({"Opción": list(opciones), "Precio (€)": list(opciones.values())})
-            editada = st.data_editor(
-                tabla, hide_index=True, width="stretch", num_rows="dynamic", key="precios_" + grupo,
-                column_config={"Precio (€)": st.column_config.NumberColumn(min_value=0, step=0.5, format="%.2f €")},
-            )
-            nuevas[grupo] = {
-                str(f["Opción"]).strip(): float(f["Precio (€)"] or 0)
-                for _, f in editada.iterrows() if str(f["Opción"] or "").strip()
-            }
+            nuevas[grupo] = editor_precios(opciones, "precios_" + grupo)
+
+    nuevos_extras = {}
+    if config.get("extras"):
+        st.header("Extras")
+        st.caption("Se suman una vez al total del pedido, no por maillot.")
+        columnas = st.columns(2)
+        for i, (grupo, datos) in enumerate(config["extras"].items()):
+            with columnas[i % 2]:
+                st.subheader(grupo + (" (precio por piedra)" if datos.get("por_unidad") else ""))
+                nuevos_extras[grupo] = {**datos, "opciones": editor_precios(datos["opciones"], "extras_" + grupo, 0.05)}
+        nota = st.text_input("Nota de las piedras de coser", value=config.get("nota_piedras", ""))
 
     if st.button("Guardar precios", type="primary"):
         config["precio_base"] = base
         config["opciones"] = nuevas
+        if config.get("extras"):
+            config["extras"] = nuevos_extras
+            config["nota_piedras"] = nota
         guardar_config(config)
         st.success("Precios guardados.")
 
