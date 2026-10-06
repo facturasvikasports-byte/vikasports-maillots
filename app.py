@@ -13,6 +13,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
@@ -22,6 +23,17 @@ CARPETA = Path(__file__).parent
 ARCHIVO_PRECIOS = CARPETA / "precios.json"
 BASE_DATOS = CARPETA / "pedidos.db"
 IMAGENES = CARPETA / "imagenes"
+
+try:
+    HORA_ESPANA = ZoneInfo("Europe/Madrid")
+except Exception:
+    HORA_ESPANA = None  # Windows sin datos de zonas horarias: se usa la hora del ordenador
+
+
+def ahora():
+    """Fecha y hora de España, también en el servidor de internet (que va en hora UTC)."""
+    return datetime.now(HORA_ESPANA)
+
 
 ESTADOS = ["Nuevo", "Presupuesto enviado", "Confirmado", "En confección", "Entregado", "Cancelado"]
 # Medidas que se piden cuando el maillot es a medida, por bloques.
@@ -301,6 +313,14 @@ def cambiar_estado(id_pedido, estado):
         con.execute(text("UPDATE pedidos SET estado = :e WHERE id = :i"), {"e": estado, "i": id_pedido})
 
 
+def menu_gestion():
+    """Enlaces entre las páginas de gestión (el menú lateral va oculto para los clientes)."""
+    a, b, c = st.columns(3)
+    a.page_link(PAGINA_BASE_DATOS, label="Base de datos", icon="📋")
+    b.page_link(PAGINA_PRECIOS, label="Precios", icon="💶")
+    c.page_link(PAGINA_PEDIDO, label="Formulario de pedido", icon="📝")
+
+
 def acceso_gestion():
     """Pide la contraseña de gestión en internet. En tu ordenador no se pide."""
     clave = secreto("CLAVE_GESTION")
@@ -431,7 +451,7 @@ def texto_pedido(numero, p):
         "*Maillot*",
         f"Gimnasta: {p['gimnasta']}",
         f"Producto: {p['producto']}",
-        f"Cantidad: {p['cantidad']}",
+        f"Cantidad: {int(p['cantidad'] or 0)}",
         f"Técnica: {p['tecnica']}",
     ]
     for etiqueta, col in [("Diseño", "diseno"), ("Forro", "forro"), ("Tejido", "tejido"),
@@ -441,7 +461,7 @@ def texto_pedido(numero, p):
     if p["medidas"]:
         filas += ["", "*Medidas (cm)*"] + [b.strip() for b in p["medidas"].split(";")]
     filas += ["", f"Complementos: {p['complementos'] or '-'}", f"Descripción: {p['descripcion'] or '-'}", ""]
-    if p["total"] is None:
+    if p["tecnica"] == "Recorte":
         filas.append("*Precio: consultar (recorte)*")
     else:
         filas.append(f"Precio por maillot: {euros(p['precio_unidad'])}")
@@ -484,7 +504,7 @@ def enviar_pedido(config):
         )
 
     pedido = {
-        "fecha": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "fecha": ahora().strftime("%Y-%m-%d %H:%M"),
         "estado": "Nuevo",
         **{c: s.get(c, "").strip() for c in TEXTOS},
         "producto": s.get("producto") or "",
@@ -770,6 +790,7 @@ def tabla_clientes(vista):
 def pagina_base_datos():
     if not acceso_gestion():
         return
+    menu_gestion()
     st.title("Base de datos")
     pedidos = leer_pedidos()
     if pedidos.empty:
@@ -809,7 +830,18 @@ def pagina_base_datos():
             st.toast(f"Estado actualizado en {len(cambios)} pedido(s).")
         st.download_button("Descargar estos pedidos en Excel",
                            a_excel(vista[COLUMNAS].rename(columns=NOMBRES), "Pedidos"),
-                           file_name=f"pedidos-maillots-{datetime.now():%Y-%m-%d}.xlsx")
+                           file_name=f"pedidos-maillots-{ahora():%Y-%m-%d}.xlsx")
+
+        st.subheader("Ficha del pedido completo")
+        fichas = {int(f["id"]): f for f in vista.fillna("").to_dict("records")}
+        elegido = st.selectbox(
+            "Elige un pedido", list(fichas), index=None, placeholder="N.º de pedido, cliente o gimnasta",
+            format_func=lambda i: f"N.º {i} · {fichas[i]['fecha']} · {fichas[i]['nombre']} · gimnasta {fichas[i]['gimnasta']}",
+        )
+        if elegido:
+            ficha = fichas[elegido]
+            st.caption(f"Estado: {ficha['estado']}")
+            st.text(texto_pedido(elegido, ficha).replace("*", ""))
 
     with pestana_clientes:
         st.dataframe(
@@ -820,7 +852,7 @@ def pagina_base_datos():
             },
         )
         st.download_button("Descargar clientes en Excel", a_excel(clientes, "Clientes"),
-                           file_name=f"clientes-maillots-{datetime.now():%Y-%m-%d}.xlsx")
+                           file_name=f"clientes-maillots-{ahora():%Y-%m-%d}.xlsx")
         elegido = st.selectbox("Ver los pedidos de", clientes["Cliente"], index=None,
                                placeholder="Elige un cliente")
         if elegido:
@@ -847,6 +879,7 @@ def pagina_precios():
     if not acceso_gestion():
         return
     config = cargar_config()
+    menu_gestion()
     st.title("Precios")
     st.caption("Escribe el precio de cada opción en euros y pulsa Guardar precios. "
                "El formulario de pedido se actualiza al momento. "
@@ -882,11 +915,10 @@ def pagina_precios():
 st.set_page_config(page_title="Vika Sports · Diseña tu maillot", page_icon=str(IMAGENES / "logo_simbolo.png"),
                    layout="wide", initial_sidebar_state="collapsed")
 mostrar_marca()
-navegacion = st.navigation({
-    "": [st.Page(pagina_pedido, title="Nuevo pedido", default=True)],
-    "Gestión": [
-        st.Page(pagina_base_datos, title="Base de datos", url_path="base-de-datos"),
-        st.Page(pagina_precios, title="Precios", url_path="precios"),
-    ],
-})
+PAGINA_PEDIDO = st.Page(pagina_pedido, title="Nuevo pedido", default=True)
+PAGINA_BASE_DATOS = st.Page(pagina_base_datos, title="Base de datos", url_path="base-de-datos")
+PAGINA_PRECIOS = st.Page(pagina_precios, title="Precios", url_path="precios")
+# El menú va oculto para que los clientes solo vean el formulario.
+# Vika Sports entra a gestión con la dirección directa: .../base-de-datos y .../precios
+navegacion = st.navigation([PAGINA_PEDIDO, PAGINA_BASE_DATOS, PAGINA_PRECIOS], position="hidden")
 navegacion.run()
