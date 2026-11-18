@@ -11,8 +11,10 @@ import io
 import json
 import re
 import urllib.parse
+import unicodedata
 import urllib.request
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -385,6 +387,15 @@ def leer_pedidos():
 def cambiar_estado(id_pedido, estado):
     with motor().begin() as con:
         con.execute(text("UPDATE pedidos SET estado = :e WHERE id = :i"), {"e": estado, "i": id_pedido})
+
+
+def guardar_modelo_recuperado(id_pedido, modelo):
+    """Apunta el modelo en un pedido que no tiene ninguno. Nunca cambia un modelo ya guardado."""
+    with motor().begin() as con:
+        return con.execute(
+            text("UPDATE pedidos SET modelo = :m WHERE id = :i AND (modelo IS NULL OR modelo = '')"),
+            {"m": modelo, "i": id_pedido},
+        ).rowcount
 
 
 def menu_gestion():
@@ -1024,8 +1035,9 @@ def fecha_bonita(fecha):
 
 
 def codigo_modelo(modelo):
-    """De «VKS-221 · Nombre» saca «VKS-221»."""
-    return str(modelo or "").split(" · ")[0].strip()
+    """De «VKS-221 · Nombre» (o «VKS-221 · Nombre (recuperado)») saca «VKS-221»."""
+    encontrado = re.match(r"\s*([A-Z]{2,5}-\d{1,5})", str(modelo or ""))
+    return encontrado.group(1) if encontrado else str(modelo or "").split(" · ")[0].strip()
 
 
 def whatsapp_cliente(telefono):
@@ -1475,6 +1487,7 @@ def pagina_base_datos():
     pestana_pedidos, pestana_clientes, pestana_resumen = st.tabs(["Pedidos", "Clientes", "Resumen"])
 
     with pestana_pedidos:
+        bloque_recuperar_modelos(pedidos)
         bloque_todas_las_fichas(vista)
         st.caption("Marca la casilla de la izquierda de un pedido, o elígelo debajo, para abrir su ficha.")
         lista = vista[["id", "fecha", "estado", "nombre", "club", "gimnasta", "modelo", "total"]].reset_index(drop=True)
@@ -1523,6 +1536,129 @@ def pagina_base_datos():
                     st.caption("Sin datos.")
                 else:
                     st.bar_chart(conteo, horizontal=True, height=60 + 32 * len(conteo), color="#00B5BE")
+
+
+# ---------------------------------------------------------------- recuperar el modelo de pedidos antiguos
+# Hasta noviembre de 2026 la app solo conocía 199 de los modelos del catálogo y guardaba sin modelo
+# los pedidos de los demás. Aquí se busca el modelo por las fotos que adjuntó la clienta y por lo
+# que escribió; Vika Sports confirma cada propuesta antes de guardarla.
+
+def huella(datos):
+    """Resumen de una foto para compararla con las del catálogo: sin el fondo blanco y a 16×24 en color."""
+    imagen = ImageOps.exif_transpose(Image.open(io.BytesIO(datos))).convert("RGB")
+    caja = ImageOps.invert(imagen.convert("L")).point(lambda v: 255 if v > 25 else 0).getbbox()
+    if caja:
+        imagen = imagen.crop(caja)
+    return list(imagen.resize((16, 24)).tobytes())
+
+
+def parecido(a, b):
+    """De 0 a 100: cuánto se parecen dos huellas."""
+    return round(100 * (1 - sum(abs(x - y) for x, y in zip(a, b)) / (255 * len(a))))
+
+
+def descargar_foto_catalogo(codigo):
+    try:
+        return codigo, urllib.request.urlopen(f"{CATALOGO_URL}{codigo}-frente.webp", timeout=20).read()
+    except Exception:
+        return codigo, None
+
+
+@st.cache_data(ttl=86400, show_spinner="Descargando las fotos del catálogo para compararlas…")
+def huellas_catalogo(codigos):
+    huellas = {}
+    with ThreadPoolExecutor(max_workers=16) as hilos:
+        for codigo, foto in hilos.map(descargar_foto_catalogo, codigos):
+            try:
+                if foto:
+                    huellas[codigo] = huella(foto)
+            except Exception:
+                pass
+    return huellas
+
+
+def sin_tildes(texto):
+    return unicodedata.normalize("NFKD", str(texto)).encode("ascii", "ignore").decode().lower()
+
+
+def modelos_en_el_texto(p, catalogo):
+    """Modelos que la clienta nombra en lo que escribió: por código (VKS-221, «el 221») o por nombre."""
+    texto = sin_tildes(" ".join(str(p[c]) for c in ["descripcion", "complementos", "imagenes"]))
+    encontrados = []
+    for codigo, datos in catalogo.items():
+        numero = codigo.split("-")[-1]
+        nombre = sin_tildes(datos.get("nombre", ""))
+        if re.search(rf"\b{re.escape(sin_tildes(codigo))}\b|\bvks\s*{numero}\b|\bmodelo\s*{numero}\b", texto) or (
+                len(nombre) >= 4 and re.search(rf"\b{re.escape(nombre)}\b", texto)):
+            encontrados.append(codigo)
+    return encontrados
+
+
+def propuestas_de_modelo(p, catalogo, huellas):
+    """[(código, motivo, parecido)] con los modelos más probables del pedido, el mejor primero."""
+    propuestas = [(c, "Lo nombra en lo que escribió", None) for c in modelos_en_el_texto(p, catalogo)]
+    for nombre, foto in leer_imagenes(int(p["id"])):
+        try:
+            suya = huella(foto)
+        except Exception:
+            continue
+        mejores = sorted(((parecido(suya, h), c) for c, h in huellas.items()), reverse=True)[:3]
+        propuestas += [(c, f"Su foto «{nombre}» se parece", n) for n, c in mejores]
+    vistos, unicas = set(), []
+    for propuesta in propuestas:
+        if propuesta[0] not in vistos:
+            vistos.add(propuesta[0])
+            unicas.append(propuesta)
+    return unicas
+
+
+def bloque_recuperar_modelos(pedidos):
+    sin_modelo = pedidos[pedidos["modelo"].fillna("").astype(str).str.strip() == ""]
+    if sin_modelo.empty:
+        return
+    with st.expander(f"🔎 Recuperar el diseño de pedidos sin modelo ({len(sin_modelo)})"):
+        st.caption("Hasta ahora la app no guardaba el modelo de muchos maillots del catálogo. Aquí se busca por las "
+                   "fotos que adjuntó la clienta y por lo que escribió. Revisa cada propuesta y pulsa «Es este» "
+                   "solo si coincide: se apunta en el pedido como «(recuperado)». Nunca se cambia un modelo ya "
+                   "guardado ni ningún otro dato.")
+        if st.button("Buscar el diseño de estos pedidos", key="buscar_modelos"):
+            st.session_state.buscando_modelos = True
+        if not st.session_state.get("buscando_modelos"):  # sigue abierto al pulsar «Es este»
+            return
+        catalogo = cargar_catalogo()
+        huellas = huellas_catalogo(tuple(sorted(catalogo)))
+        for p in sin_modelo.fillna("").to_dict("records"):
+            numero = int(p["id"])
+            with st.container(border=True):
+                st.markdown(f"**Pedido n.º {numero}** · {fecha_bonita(p['fecha'])} · {p['nombre']} · "
+                            f"gimnasta {p['gimnasta'] or '—'} · diseño: {p['diseno'] or '—'}")
+                if str(p["descripcion"]).strip():
+                    st.caption(f"Escribió: {p['descripcion']}")
+                suyas = leer_imagenes(numero)
+                if suyas:
+                    st.image([f for _, f in suyas], caption=[f"Adjuntó: {n}" for n, _ in suyas], width=120)
+                propuestas = propuestas_de_modelo(p, catalogo, huellas)
+                if not propuestas:
+                    st.warning("No hay pistas: no adjuntó foto ni nombra ningún modelo. Hay que preguntarle.")
+                    enlace = whatsapp_cliente(p["telefono"])
+                    if enlace:
+                        st.link_button("Preguntar por WhatsApp", enlace)
+                    continue
+                columnas = st.columns(min(len(propuestas), 4))
+                for columna, (codigo, motivo, cuanto) in zip(columnas, propuestas[:4]):
+                    with columna:
+                        st.image(f"{CATALOGO_URL}{codigo}-frente.webp", width=120)
+                        st.markdown(f"**{texto_modelo(codigo)}**  \n{motivo}"
+                                    + (f" · {cuanto}% de parecido" if cuanto is not None else ""))
+                        st.button("Es este", key=f"recuperar_{numero}_{codigo}", on_click=confirmar_modelo,
+                                  args=(numero, f"{texto_modelo(codigo)} (recuperado)"))
+
+
+def confirmar_modelo(numero, modelo):
+    if guardar_modelo_recuperado(numero, modelo):
+        st.toast(f"Pedido n.º {numero}: apuntado {modelo}")
+    else:
+        st.toast(f"El pedido n.º {numero} ya tenía modelo: no se ha cambiado.")
 
 
 # ---------------------------------------------------------------- página: precios
