@@ -9,6 +9,7 @@ import hmac
 import html
 import io
 import json
+import re
 import urllib.parse
 import urllib.request
 import zipfile
@@ -693,11 +694,17 @@ def texto_modelo(codigo):
     return f"{codigo} · {datos['nombre']}" if datos else codigo
 
 
+def es_codigo_modelo(codigo):
+    """VKS-221 y parecidos. Un modelo nuevo del catálogo que aún no esté en catalogo.json
+    también se acepta, para no perder nunca el maillot que eligió la clienta."""
+    return bool(re.fullmatch(r"[A-Z]{2,5}-\d{1,5}", str(codigo or "")))
+
+
 def modelo_de_enlace():
     """Si se llega desde el catálogo (?modelo=VKS-221), deja elegido ese modelo y «De catálogo»."""
     s = st.session_state
-    codigo = st.query_params.get("modelo")
-    if codigo and codigo in cargar_catalogo() and s.get("modelo_del_enlace") != codigo:
+    codigo = str(st.query_params.get("modelo") or "").strip().upper()
+    if es_codigo_modelo(codigo) and s.get("modelo_del_enlace") != codigo:
         s.modelo_del_enlace = codigo
         s.modelo = codigo
         s[clave_grupo("Diseño")] = "De catálogo"
@@ -1177,7 +1184,11 @@ def ficha_imagen(p, fotos):
 
     # Columna derecha: nombre de la gimnasta, diseño y precio
     der_x, der_ancho = 490, 670
-    y = escribir(d, str(p["gimnasta"]).upper() or "—", der_x, 350, der_ancho, letra_mano(66), NARANJA, centrado=True) + 40
+    y = escribir(d, str(p["gimnasta"]).upper() or "—", der_x, 350, der_ancho, letra_mano(66), NARANJA, centrado=True)
+    if str(p["modelo"]).strip():  # el maillot que eligió en el catálogo, bien a la vista
+        y = escribir(d, f"Modelo {p['modelo']}", der_x, y + 6, der_ancho, letra_etiqueta(38, "Bold"), NEGRO,
+                     centrado=True)
+    y += 40
     if len(fotos) == 2:
         pegar_foto(lienzo, fotos[0], der_x, y, 300, 500)
         pegar_foto(lienzo, fotos[1], der_x + der_ancho - 300, y, 300, 500)
@@ -1195,7 +1206,9 @@ def ficha_imagen(p, fotos):
         y += 20
     else:
         d.rounded_rectangle((der_x + 60, y, der_x + der_ancho - 60, y + 300), radius=24, outline="#DCECEE", width=4)
-        escribir(d, "Sin foto ni modelo de catálogo", der_x + 60, y + 125, der_ancho - 120, letra_etiqueta(28), GRIS,
+        sin_foto = ("No se pudo cargar la foto del modelo" if str(p["modelo"]).strip()
+                    else "Sin foto ni modelo de catálogo")
+        escribir(d, sin_foto, der_x + 60, y + 125, der_ancho - 120, letra_etiqueta(28), GRIS,
                  centrado=True)
         y += 340
     etiqueta_pvp, letra_pvp = "P.V.P:", letra_etiqueta(84, "ExtraBold")
@@ -1367,6 +1380,10 @@ def ficha_pedido(p, donde):
         st.download_button("⬇️ Descargar ficha (imagen)", ficha, file_name=nombre_ficha(p), mime="image/png",
                            type="primary", key=f"ficha_{donde}_{numero}", width="stretch")
         st.caption("La imagen lleva todos los datos del pedido. Puedes mandarla por WhatsApp o imprimirla.")
+        if codigo:
+            st.markdown(f"**Modelo elegido en el catálogo:**  \n### {p['modelo']}")
+        else:
+            st.caption("Este pedido no tiene modelo de catálogo: la clienta no llegó desde el botón «Lo quiero».")
         if codigo:
             st.link_button("Ver el modelo en el catálogo", f"{CATALOGO_URL}#{codigo}", width="stretch")
             if foto_catalogo(codigo) is None:

@@ -1,4 +1,1348 @@
 {
+ "VKS-558": {
+  "nombre": "León",
+  "seccion": "Animales"
+ },
+ "VKS-557": {
+  "nombre": "Laurel",
+  "seccion": "Ornamentales"
+ },
+ "VKS-556": {
+  "nombre": "Corsé Cian",
+  "seccion": "Clásicos"
+ },
+ "VKS-555": {
+  "nombre": "Geometría Neón",
+  "seccion": "Geométricos"
+ },
+ "VKS-554": {
+  "nombre": "Cielo Azul",
+  "seccion": "Geométricos"
+ },
+ "VKS-553": {
+  "nombre": "Nieve Turquesa",
+  "seccion": "Degradados"
+ },
+ "VKS-552": {
+  "nombre": "Tribal Turquesa",
+  "seccion": "Geométricos"
+ },
+ "VKS-551": {
+  "nombre": "Minnie Rosa",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-550": {
+  "nombre": "Sol Fucsia",
+  "seccion": "Geométricos"
+ },
+ "VKS-549": {
+  "nombre": "Cielo",
+  "seccion": "Degradados"
+ },
+ "VKS-548": {
+  "nombre": "Rosa Negra",
+  "seccion": "Flores"
+ },
+ "VKS-547": {
+  "nombre": "Fénix Verde",
+  "seccion": "Plumas"
+ },
+ "VKS-546": {
+  "nombre": "Tormenta Lima",
+  "seccion": "Geométricos"
+ },
+ "VKS-545": {
+  "nombre": "Vaquera Vaca",
+  "seccion": "Clásicos"
+ },
+ "VKS-544": {
+  "nombre": "Rayo Nocturno",
+  "seccion": "Geométricos"
+ },
+ "VKS-543": {
+  "nombre": "Corona Morada",
+  "seccion": "Ornamentales"
+ },
+ "VKS-542": {
+  "nombre": "Rombos Neón",
+  "seccion": "Geométricos"
+ },
+ "VKS-541": {
+  "nombre": "Celeste Real",
+  "seccion": "Ornamentales"
+ },
+ "VKS-540": {
+  "nombre": "Plumas Petróleo",
+  "seccion": "Plumas"
+ },
+ "VKS-539": {
+  "nombre": "Bruma",
+  "seccion": "Plumas"
+ },
+ "VKS-538": {
+  "nombre": "Vitral de Fuego",
+  "seccion": "Llamas"
+ },
+ "VKS-537": {
+  "nombre": "Peto Vaquero",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-536": {
+  "nombre": "Hierba Marina",
+  "seccion": "Plumas"
+ },
+ "VKS-535": {
+  "nombre": "Tribal Esmeralda",
+  "seccion": "Geométricos"
+ },
+ "VKS-534": {
+  "nombre": "Plumas de Plata",
+  "seccion": "Plumas"
+ },
+ "VKS-533": {
+  "nombre": "Arabesco Rosa",
+  "seccion": "Ornamentales"
+ },
+ "VKS-532": {
+  "nombre": "Vitral Naranja",
+  "seccion": "Geométricos"
+ },
+ "VKS-531": {
+  "nombre": "Fuego Amarillo",
+  "seccion": "Llamas"
+ },
+ "VKS-530": {
+  "nombre": "Estrella de Mar",
+  "seccion": "Flores"
+ },
+ "VKS-529": {
+  "nombre": "Arabesco Fucsia",
+  "seccion": "Ornamentales"
+ },
+ "VKS-528": {
+  "nombre": "Vitral Violeta",
+  "seccion": "Geométricos"
+ },
+ "VKS-527": {
+  "nombre": "Tigresa",
+  "seccion": "Estrellas"
+ },
+ "VKS-526": {
+  "nombre": "Hojas de Plata",
+  "seccion": "Flores"
+ },
+ "VKS-525": {
+  "nombre": "Arabesco Gris",
+  "seccion": "Ornamentales"
+ },
+ "VKS-524": {
+  "nombre": "Filigrana Azul",
+  "seccion": "Ornamentales"
+ },
+ "VKS-523": {
+  "nombre": "Llamas Fucsia",
+  "seccion": "Llamas"
+ },
+ "VKS-522": {
+  "nombre": "Rosa Pastel",
+  "seccion": "Geométricos"
+ },
+ "VKS-521": {
+  "nombre": "Arabesco Rojo",
+  "seccion": "Ornamentales"
+ },
+ "VKS-520": {
+  "nombre": "Fucsia Noche",
+  "seccion": "Degradados"
+ },
+ "VKS-519": {
+  "nombre": "Lima Noche",
+  "seccion": "Degradados"
+ },
+ "VKS-518": {
+  "nombre": "Granate",
+  "seccion": "Degradados"
+ },
+ "VKS-517": {
+  "nombre": "Estallido Azul",
+  "seccion": "Flores"
+ },
+ "VKS-516": {
+  "nombre": "Pincelada Fucsia",
+  "seccion": "Degradados"
+ },
+ "VKS-515": {
+  "nombre": "Rubí Negro",
+  "seccion": "Ornamentales"
+ },
+ "VKS-514": {
+  "nombre": "Alas de Colores",
+  "seccion": "Geométricos"
+ },
+ "VKS-513": {
+  "nombre": "Selva Petróleo",
+  "seccion": "Geométricos"
+ },
+ "VKS-512": {
+  "nombre": "Arabesco Turquesa",
+  "seccion": "Ornamentales"
+ },
+ "VKS-511": {
+  "nombre": "Plumas Turquesa",
+  "seccion": "Plumas"
+ },
+ "VKS-510": {
+  "nombre": "Llama Dorada",
+  "seccion": "Llamas"
+ },
+ "VKS-509": {
+  "nombre": "Lila Floral",
+  "seccion": "Flores"
+ },
+ "VKS-508": {
+  "nombre": "Nieve Rosa",
+  "seccion": "Degradados"
+ },
+ "VKS-507": {
+  "nombre": "Harley Quinn",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-506": {
+  "nombre": "Rey León",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-505": {
+  "nombre": "Cristal Cian",
+  "seccion": "Geométricos"
+ },
+ "VKS-504": {
+  "nombre": "Filigrana Esmeralda",
+  "seccion": "Ornamentales"
+ },
+ "VKS-503": {
+  "nombre": "Laguna Profunda",
+  "seccion": "Degradados"
+ },
+ "VKS-502": {
+  "nombre": "Pedrería Fucsia",
+  "seccion": "Geométricos"
+ },
+ "VKS-501": {
+  "nombre": "Nube Azul",
+  "seccion": "Flores"
+ },
+ "VKS-500": {
+  "nombre": "Ola Turquesa",
+  "seccion": "Plumas"
+ },
+ "VKS-499": {
+  "nombre": "Plumas Rojas",
+  "seccion": "Plumas"
+ },
+ "VKS-498": {
+  "nombre": "Tótem Rosa",
+  "seccion": "Geométricos"
+ },
+ "VKS-497": {
+  "nombre": "Garras Doradas",
+  "seccion": "Geométricos"
+ },
+ "VKS-496": {
+  "nombre": "Hierba",
+  "seccion": "Plumas"
+ },
+ "VKS-495": {
+  "nombre": "Arcoíris Tribal",
+  "seccion": "Plumas"
+ },
+ "VKS-494": {
+  "nombre": "Rosa Antigua",
+  "seccion": "Flores"
+ },
+ "VKS-493": {
+  "nombre": "Zarpa Fucsia",
+  "seccion": "Geométricos"
+ },
+ "VKS-492": {
+  "nombre": "Fuego Plateado",
+  "seccion": "Llamas"
+ },
+ "VKS-491": {
+  "nombre": "Egipto",
+  "seccion": "Ornamentales"
+ },
+ "VKS-490": {
+  "nombre": "Gótica",
+  "seccion": "Ornamentales"
+ },
+ "VKS-489": {
+  "nombre": "Pantera Rosa Gala",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-488": {
+  "nombre": "Hoguera Negra",
+  "seccion": "Llamas"
+ },
+ "VKS-487": {
+  "nombre": "Noche Dorada",
+  "seccion": "Ornamentales"
+ },
+ "VKS-486": {
+  "nombre": "Selva Salvaje",
+  "seccion": "Animales"
+ },
+ "VKS-485": {
+  "nombre": "Fénix de Oro",
+  "seccion": "Llamas"
+ },
+ "VKS-484": {
+  "nombre": "Espiga Granate",
+  "seccion": "Ornamentales"
+ },
+ "VKS-483": {
+  "nombre": "Ceniza",
+  "seccion": "Llamas"
+ },
+ "VKS-482": {
+  "nombre": "Dragón de Plata",
+  "seccion": "Ornamentales"
+ },
+ "VKS-481": {
+  "nombre": "Guerrera Azul",
+  "seccion": "Geométricos"
+ },
+ "VKS-480": {
+  "nombre": "Lanza",
+  "seccion": "Ornamentales"
+ },
+ "VKS-479": {
+  "nombre": "Panal",
+  "seccion": "Geométricos"
+ },
+ "VKS-478": {
+  "nombre": "Pompas",
+  "seccion": "Ornamentales"
+ },
+ "VKS-477": {
+  "nombre": "Aurora Boreal",
+  "seccion": "Degradados"
+ },
+ "VKS-476": {
+  "nombre": "Estrella Fugaz",
+  "seccion": "Estrellas"
+ },
+ "VKS-475": {
+  "nombre": "Llama Gris",
+  "seccion": "Llamas"
+ },
+ "VKS-474": {
+  "nombre": "Escarcha Plateada",
+  "seccion": "Degradados"
+ },
+ "VKS-473": {
+  "nombre": "Puff Power",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-472": {
+  "nombre": "Damasco",
+  "seccion": "Ornamentales"
+ },
+ "VKS-471": {
+  "nombre": "Robin Hood",
+  "seccion": "Clásicos"
+ },
+ "VKS-470": {
+  "nombre": "Plumas Fucsia",
+  "seccion": "Plumas"
+ },
+ "VKS-469": {
+  "nombre": "Algodón de Azúcar",
+  "seccion": "Degradados"
+ },
+ "VKS-468": {
+  "nombre": "Princesa del Hielo",
+  "seccion": "Ornamentales"
+ },
+ "VKS-467": {
+  "nombre": "Dragón Verde",
+  "seccion": "Animales"
+ },
+ "VKS-466": {
+  "nombre": "Zigzag",
+  "seccion": "Geométricos"
+ },
+ "VKS-465": {
+  "nombre": "Jack Skellington",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-464": {
+  "nombre": "Colegiala",
+  "seccion": "Clásicos"
+ },
+ "VKS-463": {
+  "nombre": "Marea Nocturna",
+  "seccion": "Degradados"
+ },
+ "VKS-462": {
+  "nombre": "Emperador",
+  "seccion": "Ornamentales"
+ },
+ "VKS-461": {
+  "nombre": "Estrellas Fucsia",
+  "seccion": "Estrellas"
+ },
+ "VKS-460": {
+  "nombre": "Medianoche Rosa",
+  "seccion": "Geométricos"
+ },
+ "VKS-459": {
+  "nombre": "Chaqueta Fucsia",
+  "seccion": "Clásicos"
+ },
+ "VKS-458": {
+  "nombre": "Rosa Dorada",
+  "seccion": "Ornamentales"
+ },
+ "VKS-457": {
+  "nombre": "Mosaico Real",
+  "seccion": "Ornamentales"
+ },
+ "VKS-456": {
+  "nombre": "Pocahontas",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-455": {
+  "nombre": "Llama Negra",
+  "seccion": "Llamas"
+ },
+ "VKS-454": {
+  "nombre": "Bronce",
+  "seccion": "Degradados"
+ },
+ "VKS-453": {
+  "nombre": "Zarpazo",
+  "seccion": "Geométricos"
+ },
+ "VKS-452": {
+  "nombre": "Sonrisa Neón",
+  "seccion": "Geométricos"
+ },
+ "VKS-451": {
+  "nombre": "Noche Estrellada",
+  "seccion": "Estrellas"
+ },
+ "VKS-450": {
+  "nombre": "Chaleco Granate",
+  "seccion": "Clásicos"
+ },
+ "VKS-449": {
+  "nombre": "Avispa",
+  "seccion": "Geométricos"
+ },
+ "VKS-448": {
+  "nombre": "Llama Roja",
+  "seccion": "Llamas"
+ },
+ "VKS-447": {
+  "nombre": "Llamas de Colores",
+  "seccion": "Llamas"
+ },
+ "VKS-446": {
+  "nombre": "Barroco Blanco",
+  "seccion": "Ornamentales"
+ },
+ "VKS-445": {
+  "nombre": "Genio",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-444": {
+  "nombre": "Fénix Azul",
+  "seccion": "Plumas"
+ },
+ "VKS-443": {
+  "nombre": "Flor de Plata",
+  "seccion": "Flores"
+ },
+ "VKS-442": {
+  "nombre": "Cebra Lima",
+  "seccion": "Geométricos"
+ },
+ "VKS-441": {
+  "nombre": "Trueno Fucsia",
+  "seccion": "Geométricos"
+ },
+ "VKS-440": {
+  "nombre": "Lila Real",
+  "seccion": "Degradados"
+ },
+ "VKS-439": {
+  "nombre": "Esmoquin",
+  "seccion": "Clásicos"
+ },
+ "VKS-438": {
+  "nombre": "Rayo Azul",
+  "seccion": "Geométricos"
+ },
+ "VKS-437": {
+  "nombre": "Fénix Violeta",
+  "seccion": "Plumas"
+ },
+ "VKS-436": {
+  "nombre": "Nilo",
+  "seccion": "Ornamentales"
+ },
+ "VKS-435": {
+  "nombre": "Noche de Luna",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-434": {
+  "nombre": "Sombra Roja",
+  "seccion": "Degradados"
+ },
+ "VKS-433": {
+  "nombre": "Cerezo",
+  "seccion": "Flores"
+ },
+ "VKS-432": {
+  "nombre": "Brisa",
+  "seccion": "Plumas"
+ },
+ "VKS-431": {
+  "nombre": "Corona Violeta",
+  "seccion": "Ornamentales"
+ },
+ "VKS-430": {
+  "nombre": "Tribal Violeta",
+  "seccion": "Geométricos"
+ },
+ "VKS-429": {
+  "nombre": "Limonada",
+  "seccion": "Geométricos"
+ },
+ "VKS-428": {
+  "nombre": "Turquesa Imperial",
+  "seccion": "Ornamentales"
+ },
+ "VKS-427": {
+  "nombre": "Leopardo Rosa",
+  "seccion": "Animales"
+ },
+ "VKS-426": {
+  "nombre": "Barbie",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-425": {
+  "nombre": "Minions",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-424": {
+  "nombre": "Selva Lima",
+  "seccion": "Clásicos"
+ },
+ "VKS-423": {
+  "nombre": "Corsé Rojo",
+  "seccion": "Clásicos"
+ },
+ "VKS-422": {
+  "nombre": "Leñador",
+  "seccion": "Clásicos"
+ },
+ "VKS-421": {
+  "nombre": "Telaraña",
+  "seccion": "Geométricos"
+ },
+ "VKS-420": {
+  "nombre": "Cordones Rosa",
+  "seccion": "Clásicos"
+ },
+ "VKS-419": {
+  "nombre": "Leopardo Fucsia",
+  "seccion": "Animales"
+ },
+ "VKS-418": {
+  "nombre": "Ocaso",
+  "seccion": "Degradados"
+ },
+ "VKS-417": {
+  "nombre": "Cielo Plateado",
+  "seccion": "Degradados"
+ },
+ "VKS-416": {
+  "nombre": "Glaciar Nocturno",
+  "seccion": "Geométricos"
+ },
+ "VKS-415": {
+  "nombre": "Llama Tropical",
+  "seccion": "Llamas"
+ },
+ "VKS-414": {
+  "nombre": "Ave del Paraíso",
+  "seccion": "Plumas"
+ },
+ "VKS-413": {
+  "nombre": "Burbujas Naranja",
+  "seccion": "Geométricos"
+ },
+ "VKS-412": {
+  "nombre": "Uve",
+  "seccion": "Geométricos"
+ },
+ "VKS-411": {
+  "nombre": "Hojarasca",
+  "seccion": "Ornamentales"
+ },
+ "VKS-410": {
+  "nombre": "Estrellas Fugaces",
+  "seccion": "Estrellas"
+ },
+ "VKS-409": {
+  "nombre": "Selva Naranja",
+  "seccion": "Flores"
+ },
+ "VKS-408": {
+  "nombre": "Peto Arcoíris",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-407": {
+  "nombre": "Iceberg",
+  "seccion": "Degradados"
+ },
+ "VKS-406": {
+  "nombre": "Melodía",
+  "seccion": "Geométricos"
+ },
+ "VKS-405": {
+  "nombre": "Fantasía",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-404": {
+  "nombre": "Luna Azul",
+  "seccion": "Ornamentales"
+ },
+ "VKS-403": {
+  "nombre": "Fiera",
+  "seccion": "Plumas"
+ },
+ "VKS-402": {
+  "nombre": "Cuervo",
+  "seccion": "Plumas"
+ },
+ "VKS-401": {
+  "nombre": "Ave Dorada",
+  "seccion": "Ornamentales"
+ },
+ "VKS-400": {
+  "nombre": "Estela",
+  "seccion": "Geométricos"
+ },
+ "VKS-399": {
+  "nombre": "Marea Verde",
+  "seccion": "Plumas"
+ },
+ "VKS-398": {
+  "nombre": "Arquitecto",
+  "seccion": "Geométricos"
+ },
+ "VKS-397": {
+  "nombre": "Amapola Roja",
+  "seccion": "Flores"
+ },
+ "VKS-396": {
+  "nombre": "Plumas Violeta",
+  "seccion": "Plumas"
+ },
+ "VKS-395": {
+  "nombre": "Sombra",
+  "seccion": "Plumas"
+ },
+ "VKS-394": {
+  "nombre": "Relámpago Azul",
+  "seccion": "Geométricos"
+ },
+ "VKS-393": {
+  "nombre": "Vidriera Nocturna",
+  "seccion": "Geométricos"
+ },
+ "VKS-392": {
+  "nombre": "Electro",
+  "seccion": "Geométricos"
+ },
+ "VKS-391": {
+  "nombre": "Enebro",
+  "seccion": "Flores"
+ },
+ "VKS-390": {
+  "nombre": "Armadura",
+  "seccion": "Ornamentales"
+ },
+ "VKS-389": {
+  "nombre": "Ramillete",
+  "seccion": "Flores"
+ },
+ "VKS-388": {
+  "nombre": "Quetzal",
+  "seccion": "Ornamentales"
+ },
+ "VKS-387": {
+  "nombre": "Plumas de Fuego",
+  "seccion": "Plumas"
+ },
+ "VKS-386": {
+  "nombre": "Pantera Rosa",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-385": {
+  "nombre": "Joya Turquesa",
+  "seccion": "Ornamentales"
+ },
+ "VKS-384": {
+  "nombre": "Llama Azul Real",
+  "seccion": "Llamas"
+ },
+ "VKS-383": {
+  "nombre": "Tapiz",
+  "seccion": "Ornamentales"
+ },
+ "VKS-382": {
+  "nombre": "Cardo Lima",
+  "seccion": "Geométricos"
+ },
+ "VKS-381": {
+  "nombre": "Cascada",
+  "seccion": "Plumas"
+ },
+ "VKS-380": {
+  "nombre": "Hawái",
+  "seccion": "Flores"
+ },
+ "VKS-379": {
+  "nombre": "Pavo Azul",
+  "seccion": "Ornamentales"
+ },
+ "VKS-378": {
+  "nombre": "Estrella Dorada",
+  "seccion": "Estrellas"
+ },
+ "VKS-377": {
+  "nombre": "Orquídea Violeta",
+  "seccion": "Flores"
+ },
+ "VKS-376": {
+  "nombre": "Algas",
+  "seccion": "Ornamentales"
+ },
+ "VKS-375": {
+  "nombre": "Violeta",
+  "seccion": "Flores"
+ },
+ "VKS-374": {
+  "nombre": "Filigrana",
+  "seccion": "Ornamentales"
+ },
+ "VKS-373": {
+  "nombre": "Garra Roja",
+  "seccion": "Geométricos"
+ },
+ "VKS-372": {
+  "nombre": "Caleidoscopio",
+  "seccion": "Geométricos"
+ },
+ "VKS-371": {
+  "nombre": "Jimena",
+  "seccion": "Ornamentales"
+ },
+ "VKS-370": {
+  "nombre": "Tania",
+  "seccion": "Geométricos"
+ },
+ "VKS-369": {
+  "nombre": "Rombos",
+  "seccion": "Geométricos"
+ },
+ "VKS-368": {
+  "nombre": "Iris",
+  "seccion": "Plumas"
+ },
+ "VKS-367": {
+  "nombre": "Mariposa Azul",
+  "seccion": "Ornamentales"
+ },
+ "VKS-366": {
+  "nombre": "Almirante",
+  "seccion": "Geométricos"
+ },
+ "VKS-365": {
+  "nombre": "Espuma",
+  "seccion": "Degradados"
+ },
+ "VKS-364": {
+  "nombre": "Plumas Rosas",
+  "seccion": "Plumas"
+ },
+ "VKS-363": {
+  "nombre": "Cristalera",
+  "seccion": "Geométricos"
+ },
+ "VKS-362": {
+  "nombre": "Laguna Dorada",
+  "seccion": "Ornamentales"
+ },
+ "VKS-361": {
+  "nombre": "Tritón",
+  "seccion": "Ornamentales"
+ },
+ "VKS-360": {
+  "nombre": "Corona Azul",
+  "seccion": "Ornamentales"
+ },
+ "VKS-359": {
+  "nombre": "Marejada",
+  "seccion": "Geométricos"
+ },
+ "VKS-358": {
+  "nombre": "Suculenta",
+  "seccion": "Flores"
+ },
+ "VKS-357": {
+  "nombre": "Confeti Floral",
+  "seccion": "Flores"
+ },
+ "VKS-356": {
+  "nombre": "Ola Marina",
+  "seccion": "Ornamentales"
+ },
+ "VKS-355": {
+  "nombre": "Claudia",
+  "seccion": "Degradados"
+ },
+ "VKS-354": {
+  "nombre": "Lunares Rosa",
+  "seccion": "Lunares"
+ },
+ "VKS-353": {
+  "nombre": "Charlestón",
+  "seccion": "Clásicos"
+ },
+ "VKS-352": {
+  "nombre": "Pradera",
+  "seccion": "Plumas"
+ },
+ "VKS-351": {
+  "nombre": "Cebra Violeta",
+  "seccion": "Geométricos"
+ },
+ "VKS-350": {
+  "nombre": "Neón Geométrico",
+  "seccion": "Geométricos"
+ },
+ "VKS-349": {
+  "nombre": "Cascabel",
+  "seccion": "Ornamentales"
+ },
+ "VKS-348": {
+  "nombre": "Diamante",
+  "seccion": "Geométricos"
+ },
+ "VKS-347": {
+  "nombre": "Glicinia",
+  "seccion": "Flores"
+ },
+ "VKS-346": {
+  "nombre": "Hiedra",
+  "seccion": "Ornamentales"
+ },
+ "VKS-345": {
+  "nombre": "Trazo Rojo",
+  "seccion": "Geométricos"
+ },
+ "VKS-344": {
+  "nombre": "Trigo Rosa",
+  "seccion": "Ornamentales"
+ },
+ "VKS-343": {
+  "nombre": "Capa",
+  "seccion": "Clásicos"
+ },
+ "VKS-342": {
+  "nombre": "Cotorra Rosa",
+  "seccion": "Plumas"
+ },
+ "VKS-341": {
+  "nombre": "Melena",
+  "seccion": "Plumas"
+ },
+ "VKS-340": {
+  "nombre": "Astillas",
+  "seccion": "Geométricos"
+ },
+ "VKS-339": {
+  "nombre": "Laura",
+  "seccion": "Degradados"
+ },
+ "VKS-338": {
+  "nombre": "Guerrera",
+  "seccion": "Geométricos"
+ },
+ "VKS-337": {
+  "nombre": "Tótem Verde",
+  "seccion": "Ornamentales"
+ },
+ "VKS-336": {
+  "nombre": "Plumaje Lima",
+  "seccion": "Plumas"
+ },
+ "VKS-335": {
+  "nombre": "Jardín Verde",
+  "seccion": "Flores"
+ },
+ "VKS-334": {
+  "nombre": "Brasa Morada",
+  "seccion": "Llamas"
+ },
+ "VKS-333": {
+  "nombre": "Fénix Turquesa",
+  "seccion": "Plumas"
+ },
+ "VKS-332": {
+  "nombre": "Llama Neón",
+  "seccion": "Llamas"
+ },
+ "VKS-331": {
+  "nombre": "Cebra Neón",
+  "seccion": "Animales"
+ },
+ "VKS-330": {
+  "nombre": "Cintas Moradas",
+  "seccion": "Geométricos"
+ },
+ "VKS-329": {
+  "nombre": "Confitería",
+  "seccion": "Ornamentales"
+ },
+ "VKS-328": {
+  "nombre": "Dragoncito",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-327": {
+  "nombre": "Flecos Fucsia",
+  "seccion": "Geométricos"
+ },
+ "VKS-326": {
+  "nombre": "Minnie Corazones",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-325": {
+  "nombre": "Escarcha",
+  "seccion": "Geométricos"
+ },
+ "VKS-324": {
+  "nombre": "Vidriera Naranja",
+  "seccion": "Geométricos"
+ },
+ "VKS-323": {
+  "nombre": "Vidriera",
+  "seccion": "Geométricos"
+ },
+ "VKS-322": {
+  "nombre": "Chaqueta Violeta",
+  "seccion": "Clásicos"
+ },
+ "VKS-321": {
+  "nombre": "Ariel",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-320": {
+  "nombre": "Arcoíris",
+  "seccion": "Geométricos"
+ },
+ "VKS-319": {
+  "nombre": "Fuego Rosa",
+  "seccion": "Llamas"
+ },
+ "VKS-318": {
+  "nombre": "Lazo Fucsia",
+  "seccion": "Clásicos"
+ },
+ "VKS-317": {
+  "nombre": "Corsé Verde",
+  "seccion": "Clásicos"
+ },
+ "VKS-316": {
+  "nombre": "Gata Luz",
+  "seccion": "Animales"
+ },
+ "VKS-315": {
+  "nombre": "Nebulosa",
+  "seccion": "Degradados"
+ },
+ "VKS-314": {
+  "nombre": "Estrellas Lima",
+  "seccion": "Estrellas"
+ },
+ "VKS-313": {
+  "nombre": "Pinocho",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-312": {
+  "nombre": "Llama Fucsia",
+  "seccion": "Llamas"
+ },
+ "VKS-311": {
+  "nombre": "Sakura",
+  "seccion": "Flores"
+ },
+ "VKS-310": {
+  "nombre": "Picnic",
+  "seccion": "Clásicos"
+ },
+ "VKS-309": {
+  "nombre": "Pinocho Clásico",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-308": {
+  "nombre": "Rosa Roja",
+  "seccion": "Flores"
+ },
+ "VKS-307": {
+  "nombre": "Sirena",
+  "seccion": "Geométricos"
+ },
+ "VKS-306": {
+  "nombre": "Montaña",
+  "seccion": "Geométricos"
+ },
+ "VKS-305": {
+  "nombre": "Minnie Primavera",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-304": {
+  "nombre": "Vaquera",
+  "seccion": "Animales"
+ },
+ "VKS-303": {
+  "nombre": "Llamarada Rosa",
+  "seccion": "Llamas"
+ },
+ "VKS-302": {
+  "nombre": "Marie",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-301": {
+  "nombre": "Abeja Maya",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-300": {
+  "nombre": "Peter Pan",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-299": {
+  "nombre": "Garabatos",
+  "seccion": "Geométricos"
+ },
+ "VKS-298": {
+  "nombre": "Jardín Azul",
+  "seccion": "Flores"
+ },
+ "VKS-297": {
+  "nombre": "Galáctica",
+  "seccion": "Geométricos"
+ },
+ "VKS-296": {
+  "nombre": "Gato con Botas",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-295": {
+  "nombre": "Eclipse",
+  "seccion": "Geométricos"
+ },
+ "VKS-294": {
+  "nombre": "Medianoche",
+  "seccion": "Ornamentales"
+ },
+ "VKS-293": {
+  "nombre": "Majestad",
+  "seccion": "Ornamentales"
+ },
+ "VKS-292": {
+  "nombre": "Abeto",
+  "seccion": "Geométricos"
+ },
+ "VKS-291": {
+  "nombre": "Granada",
+  "seccion": "Geométricos"
+ },
+ "VKS-290": {
+  "nombre": "Kiwi",
+  "seccion": "Geométricos"
+ },
+ "VKS-289": {
+  "nombre": "Limón",
+  "seccion": "Ornamentales"
+ },
+ "VKS-288": {
+  "nombre": "Martín Pescador",
+  "seccion": "Plumas"
+ },
+ "VKS-287": {
+  "nombre": "Lima Real",
+  "seccion": "Ornamentales"
+ },
+ "VKS-286": {
+  "nombre": "Zarza",
+  "seccion": "Geométricos"
+ },
+ "VKS-285": {
+  "nombre": "Melocotón",
+  "seccion": "Geométricos"
+ },
+ "VKS-284": {
+  "nombre": "Colibrí",
+  "seccion": "Plumas"
+ },
+ "VKS-283": {
+  "nombre": "Menta",
+  "seccion": "Geométricos"
+ },
+ "VKS-282": {
+  "nombre": "Sandía",
+  "seccion": "Geométricos"
+ },
+ "VKS-281": {
+  "nombre": "Fuego Azul",
+  "seccion": "Llamas"
+ },
+ "VKS-279": {
+  "nombre": "Caribe",
+  "seccion": "Ornamentales"
+ },
+ "VKS-278": {
+  "nombre": "Lavanda",
+  "seccion": "Geométricos"
+ },
+ "VKS-277": {
+  "nombre": "Oliva",
+  "seccion": "Ornamentales"
+ },
+ "VKS-276": {
+  "nombre": "Rosa Salvaje",
+  "seccion": "Plumas"
+ },
+ "VKS-275": {
+  "nombre": "Abismo",
+  "seccion": "Degradados"
+ },
+ "VKS-274": {
+  "nombre": "Cuervo Rojo",
+  "seccion": "Plumas"
+ },
+ "VKS-273": {
+  "nombre": "Celta",
+  "seccion": "Ornamentales"
+ },
+ "VKS-272": {
+  "nombre": "Sorbete",
+  "seccion": "Geométricos"
+ },
+ "VKS-271": {
+  "nombre": "Infierno",
+  "seccion": "Llamas"
+ },
+ "VKS-270": {
+  "nombre": "Confeti",
+  "seccion": "Ornamentales"
+ },
+ "VKS-269": {
+  "nombre": "Patriota",
+  "seccion": "Geométricos"
+ },
+ "VKS-268": {
+  "nombre": "Pasión",
+  "seccion": "Llamas"
+ },
+ "VKS-267": {
+  "nombre": "Domador",
+  "seccion": "Clásicos"
+ },
+ "VKS-266": {
+  "nombre": "Dulces Sueños",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-265": {
+  "nombre": "Encaje Verde",
+  "seccion": "Ornamentales"
+ },
+ "VKS-264": {
+  "nombre": "Bosque",
+  "seccion": "Flores"
+ },
+ "VKS-263": {
+  "nombre": "Malva",
+  "seccion": "Degradados"
+ },
+ "VKS-262": {
+  "nombre": "Ácido",
+  "seccion": "Geométricos"
+ },
+ "VKS-261": {
+  "nombre": "Canario",
+  "seccion": "Plumas"
+ },
+ "VKS-260": {
+  "nombre": "Faralaes",
+  "seccion": "Lunares"
+ },
+ "VKS-259": {
+  "nombre": "Celosía",
+  "seccion": "Geométricos"
+ },
+ "VKS-258": {
+  "nombre": "Jaguar",
+  "seccion": "Animales"
+ },
+ "VKS-257": {
+  "nombre": "Enamorada",
+  "seccion": "Geométricos"
+ },
+ "VKS-256": {
+  "nombre": "Chocolatero",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-255": {
+  "nombre": "Cardo",
+  "seccion": "Geométricos"
+ },
+ "VKS-254": {
+  "nombre": "Fucsia Noir",
+  "seccion": "Geométricos"
+ },
+ "VKS-253": {
+  "nombre": "Bermellón",
+  "seccion": "Clásicos"
+ },
+ "VKS-252": {
+  "nombre": "Húsar",
+  "seccion": "Clásicos"
+ },
+ "VKS-251": {
+  "nombre": "Kimono",
+  "seccion": "Clásicos"
+ },
+ "VKS-250": {
+  "nombre": "Sevillana",
+  "seccion": "Lunares"
+ },
+ "VKS-249": {
+  "nombre": "Llama Azul",
+  "seccion": "Llamas"
+ },
+ "VKS-248": {
+  "nombre": "Pink Ladies",
+  "seccion": "Clásicos"
+ },
+ "VKS-247": {
+  "nombre": "Cotorra",
+  "seccion": "Plumas"
+ },
+ "VKS-246": {
+  "nombre": "Campanilla",
+  "seccion": "Flores"
+ },
+ "VKS-245": {
+  "nombre": "Crepúsculo",
+  "seccion": "Degradados"
+ },
+ "VKS-244": {
+  "nombre": "Pegaso",
+  "seccion": "Plumas"
+ },
+ "VKS-243": {
+  "nombre": "Volcán",
+  "seccion": "Llamas"
+ },
+ "VKS-242": {
+  "nombre": "Los Simpson",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-241": {
+  "nombre": "Fénix Dorado",
+  "seccion": "Plumas"
+ },
+ "VKS-240": {
+  "nombre": "Ébano",
+  "seccion": "Geométricos"
+ },
+ "VKS-239": {
+  "nombre": "Súper Mario",
+  "seccion": "Dibujos Animados"
+ },
+ "VKS-238": {
+  "nombre": "Calabaza",
+  "seccion": "Geométricos"
+ },
+ "VKS-237": {
+  "nombre": "Remolino",
+  "seccion": "Ornamentales"
+ },
+ "VKS-236": {
+  "nombre": "Flamingo",
+  "seccion": "Plumas"
+ },
+ "VKS-235": {
+  "nombre": "Hoguera",
+  "seccion": "Llamas"
+ },
+ "VKS-234": {
+  "nombre": "Acuarela",
+  "seccion": "Degradados"
+ },
+ "VKS-233": {
+  "nombre": "Espiga Rosa",
+  "seccion": "Ornamentales"
+ },
+ "VKS-232": {
+  "nombre": "Origami",
+  "seccion": "Geométricos"
+ },
+ "VKS-231": {
+  "nombre": "Oleaje",
+  "seccion": "Ornamentales"
+ },
+ "VKS-230": {
+  "nombre": "Pistacho",
+  "seccion": "Clásicos"
+ },
+ "VKS-229": {
+  "nombre": "Trigal",
+  "seccion": "Ornamentales"
+ },
+ "VKS-228": {
+  "nombre": "Tulipán",
+  "seccion": "Flores"
+ },
+ "VKS-227": {
+  "nombre": "Coral",
+  "seccion": "Ornamentales"
+ },
+ "VKS-226": {
+  "nombre": "Primavera",
+  "seccion": "Flores"
+ },
+ "VKS-225": {
+  "nombre": "Flamenca",
+  "seccion": "Ornamentales"
+ },
+ "VKS-224": {
+  "nombre": "Pavo Real",
+  "seccion": "Animales"
+ },
+ "VKS-223": {
+  "nombre": "Orquídea",
+  "seccion": "Flores"
+ },
+ "VKS-222": {
+  "nombre": "Laguna",
+  "seccion": "Plumas"
+ },
  "VKS-221": {
   "nombre": "Escarlata Naval",
   "seccion": "Ornamentales"
@@ -43,17 +1387,9 @@
   "nombre": "Relámpago",
   "seccion": "Degradados"
  },
- "VKS-210": {
-  "nombre": "Catedral",
-  "seccion": "Geométricos"
- },
  "VKS-209": {
   "nombre": "Buganvilla",
   "seccion": "Flores"
- },
- "VKS-208": {
-  "nombre": "Brasas",
-  "seccion": "Ornamentales"
  },
  "VKS-207": {
   "nombre": "Rayos X",
@@ -62,10 +1398,6 @@
  "VKS-206": {
   "nombre": "Ocelote",
   "seccion": "Animales"
- },
- "VKS-205": {
-  "nombre": "Niebla Verde",
-  "seccion": "Degradados"
  },
  "VKS-204": {
   "nombre": "Vainilla",
@@ -87,10 +1419,6 @@
   "nombre": "Solana",
   "seccion": "Degradados"
  },
- "VKS-198": {
-  "nombre": "Águila Real",
-  "seccion": "Plumas"
- },
  "VKS-197": {
   "nombre": "Turquesa",
   "seccion": "Ornamentales"
@@ -98,14 +1426,6 @@
  "VKS-196": {
   "nombre": "Abanico Real",
   "seccion": "Geométricos"
- },
- "VKS-195": {
-  "nombre": "Brisa",
-  "seccion": "Degradados"
- },
- "VKS-194": {
-  "nombre": "Escarlata",
-  "seccion": "Clásicos"
  },
  "VKS-193": {
   "nombre": "Cordones",
@@ -174,14 +1494,6 @@
  "VKS-170": {
   "nombre": "Sofía",
   "seccion": "Plumas"
- },
- "VKS-167": {
-  "nombre": "Marta",
-  "seccion": "Llamas"
- },
- "VKS-166": {
-  "nombre": "Magma",
-  "seccion": "Llamas"
  },
  "VKS-164": {
   "nombre": "Natalía",
@@ -794,5 +2106,37 @@
  "VKS-006": {
   "nombre": "Lunares",
   "seccion": "Lunares"
+ },
+ "VKS-210": {
+  "nombre": "Catedral",
+  "seccion": "Geométricos"
+ },
+ "VKS-208": {
+  "nombre": "Brasas",
+  "seccion": "Ornamentales"
+ },
+ "VKS-205": {
+  "nombre": "Niebla Verde",
+  "seccion": "Degradados"
+ },
+ "VKS-198": {
+  "nombre": "Águila Real",
+  "seccion": "Plumas"
+ },
+ "VKS-195": {
+  "nombre": "Brisa",
+  "seccion": "Degradados"
+ },
+ "VKS-194": {
+  "nombre": "Escarlata",
+  "seccion": "Clásicos"
+ },
+ "VKS-167": {
+  "nombre": "Marta",
+  "seccion": "Llamas"
+ },
+ "VKS-166": {
+  "nombre": "Magma",
+  "seccion": "Llamas"
  }
 }
