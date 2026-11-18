@@ -678,9 +678,17 @@ CATALOGO_URL = "https://facturasvikasports-byte.github.io/catalogo/"
 ARCHIVO_CATALOGO = CARPETA / "catalogo.json"
 
 
-@st.cache_data
 def cargar_catalogo():
     """{código: {nombre, seccion}} de los modelos del catálogo."""
+    try:
+        # Con la fecha del archivo: al subir un catalogo.json nuevo se vuelve a leer.
+        return leer_catalogo(ARCHIVO_CATALOGO.stat().st_mtime)
+    except OSError:
+        return {}
+
+
+@st.cache_data
+def leer_catalogo(fecha_archivo):
     try:
         return json.loads(ARCHIVO_CATALOGO.read_text(encoding="utf-8"))
     except (OSError, ValueError):
