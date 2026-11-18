@@ -11,13 +11,14 @@ import io
 import json
 import urllib.parse
 import urllib.request
+import zipfile
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 import streamlit as st
-from PIL import Image, ImageOps
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 from sqlalchemy import create_engine, inspect, text
 
 CARPETA = Path(__file__).parent
@@ -188,7 +189,23 @@ button[data-testid="stBaseButton-primary"] {
 }
 button[data-testid="stBaseButton-primary"] p { font-size: 1.1rem; font-weight: 700; }
 
+/* Ficha de cada pedido (página Base de datos) */
+.ficha-cab {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;
+  background: var(--magenta); color: #fff; border-radius: 20px; padding: 1.2rem 1.5rem; margin: .6rem 0 1rem;
+}
+.ficha-cab .eti { font-size: .74rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #BFF3F5; }
+.ficha-cab h2 { color: #fff !important; margin: .1rem 0 .1rem !important; padding: 0 !important; font-size: 1.8rem !important; }
+.ficha-cab .sub { color: #FBE3F1; font-size: .95rem; }
+.ficha-cab .importe { text-align: right; }
+.ficha-cab .importe strong { display: block; font-size: 1.9rem; font-weight: 800; font-variant-numeric: tabular-nums; margin-top: .3rem; }
+.chip-estado {
+  display: inline-block; padding: .25rem .8rem; border-radius: 999px; background: #fff;
+  font-size: .8rem; font-weight: 700;
+}
+
 @media (max-width: 640px) {
+  .ficha-cab .importe { text-align: left; }
   .barra-marca { height: 56px; justify-content: flex-start; padding-left: 52px; }
   .barra-marca img { height: 30px; max-width: 42vw; }
   .whatsapp { right: 10px; padding: .3rem .7rem .3rem .3rem; gap: .4rem; }
@@ -353,7 +370,11 @@ def preparar_imagen(archivo):
 
 def leer_pedidos():
     with motor().connect() as con:
-        pedidos = pd.read_sql_query(text(f"SELECT {', '.join(COLUMNAS)} FROM pedidos ORDER BY id DESC"), con)
+        # Todas las columnas, también las de versiones antiguas, para no perder ningún dato.
+        pedidos = pd.read_sql_query(text("SELECT * FROM pedidos ORDER BY id DESC"), con)
+    for col in COLUMNAS:
+        if col not in pedidos:
+            pedidos[col] = None
     for col in ["cantidad", "precio_unidad", "total"]:
         pedidos[col] = pd.to_numeric(pedidos[col], errors="coerce").fillna(0)
     pedidos["fecha_dt"] = pd.to_datetime(pedidos["fecha"], format="%Y-%m-%d %H:%M", errors="coerce")
@@ -938,13 +959,14 @@ def filtrar(pedidos):
             elegidos[col] = columnas[i % 3].multiselect(etiqueta, valores, placeholder="Todos", key="f_" + col)
         dias = pedidos["fecha_dt"].dt.date.dropna()
         rango = st.date_input("Fechas del pedido", value=(dias.min(), dias.max()),
-                              format="DD/MM/YYYY", key="f_fechas")
+                              format="DD/MM/YYYY", key="f_fechas") if not dias.empty else None
 
     vista = pedidos
     for col, valores in elegidos.items():
         if valores:
             vista = vista[vista[col].isin(valores)]
-    if isinstance(rango, (list, tuple)) and len(rango) == 2:
+    # Con todas las fechas elegidas no se filtra, para no esconder pedidos con la fecha en otro formato.
+    if isinstance(rango, (list, tuple)) and len(rango) == 2 and tuple(rango) != (dias.min(), dias.max()):
         dia = vista["fecha_dt"].dt.date
         vista = vista[(dia >= rango[0]) & (dia <= rango[1])]
     if buscar:
@@ -973,6 +995,438 @@ def tabla_clientes(vista):
     return clientes.sort_values("Último pedido", ascending=False).reset_index(drop=True)
 
 
+COLOR_ESTADO = {
+    "Nuevo": "#C0157E", "Presupuesto enviado": "#C46A00", "Confirmado": "#008C93",
+    "En confección": "#4F55C2", "Entregado": "#23854A", "Cancelado": "#6F7A7C",
+}
+
+
+def fecha_bonita(fecha):
+    try:
+        return datetime.strptime(str(fecha), "%Y-%m-%d %H:%M").strftime("%d/%m/%Y · %H:%M")
+    except ValueError:
+        return str(fecha)
+
+
+def codigo_modelo(modelo):
+    """De «VKS-221 · Nombre» saca «VKS-221»."""
+    return str(modelo or "").split(" · ")[0].strip()
+
+
+def whatsapp_cliente(telefono):
+    numero = "".join(c for c in str(telefono) if c.isdigit())
+    if len(numero) == 9:
+        numero = "34" + numero
+    return f"https://wa.me/{numero}" if numero else ""
+
+
+def partes_medidas(medidas):
+    """Las medidas guardadas («Cuerpo: Pecho 80 cm, Cintura -; Manga: …») como
+    [(bloque, [(medida, cifra), …]), …]. Lo que no se reconoce se conserva entero."""
+    partes = []
+    for bloque in str(medidas or "").split(";"):
+        nombre, dos_puntos, valores = bloque.partition(":")
+        if not dos_puntos:  # texto con otro formato: se muestra tal cual
+            nombre, valores = "", bloque
+        casillas = []
+        for valor in valores.split(","):
+            valor = valor.strip()
+            if not valor:
+                continue
+            medida = next((m for m in sorted(TODAS_LAS_MEDIDAS, key=len, reverse=True) if valor.startswith(m)), None)
+            if medida:
+                cifra = valor[len(medida):].strip()
+                casillas.append((medida, "—" if cifra in ("", "-") else cifra))
+            else:  # medida que no se reconoce: se muestra entera, sin perderla
+                casillas.append(("", valor))
+        if casillas:
+            partes.append((nombre.strip(), casillas))
+    return partes
+
+
+# ---------------------------------------------------------------- ficha del pedido (imagen)
+
+FUENTES = CARPETA / "fuentes"
+NARANJA = "#E8601C"
+ROJO = "#E3000F"
+NEGRO = "#151515"
+GRIS = "#6F7A7C"
+ANCHO_FICHA = 1180
+
+
+@st.cache_resource
+def fuente(archivo, tamano):
+    return ImageFont.truetype(str(FUENTES / archivo), tamano)
+
+
+def letra_mano(tamano):
+    return fuente("PatrickHand-Regular.ttf", tamano)
+
+
+def letra_etiqueta(tamano, grosor="SemiBold"):
+    return fuente(f"Montserrat-{grosor}.ttf", tamano)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def foto_catalogo(codigo):
+    """Foto de frente del modelo de catálogo, o None si no se puede descargar."""
+    try:
+        return urllib.request.urlopen(f"{CATALOGO_URL}{codigo}-frente.webp", timeout=15).read()
+    except Exception:
+        return None
+
+
+def partir_lineas(dibujo, texto, letra, ancho):
+    """Reparte el texto en líneas que caben en el ancho, respetando los saltos de línea."""
+    lineas = []
+    for parrafo in str(texto).splitlines() or [""]:
+        linea = ""
+        for palabra in parrafo.split():
+            prueba = f"{linea} {palabra}".strip()
+            if linea and dibujo.textlength(prueba, font=letra) > ancho:
+                lineas.append(linea)
+                linea = palabra
+            else:
+                linea = prueba
+        lineas.append(linea)
+    return lineas
+
+
+def escribir(dibujo, texto, x, y, ancho, letra, color, centrado=False, interlineado=1.15):
+    """Escribe el texto en varias líneas si hace falta. Devuelve la y de debajo."""
+    alto = round(letra.size * interlineado)
+    for linea in partir_lineas(dibujo, texto, letra, ancho):
+        dx = (ancho - dibujo.textlength(linea, font=letra)) / 2 if centrado else 0
+        dibujo.text((x + dx, y), linea, font=letra, fill=color)
+        y += alto
+    return y
+
+
+def pegar_foto(lienzo, datos, x, y, ancho, alto):
+    """Pega la foto encajada en el recuadro, sin deformarla."""
+    try:
+        foto = ImageOps.exif_transpose(Image.open(io.BytesIO(datos))).convert("RGBA")
+    except Exception:
+        return
+    foto.thumbnail((ancho, alto))
+    lienzo.paste(foto, (x + (ancho - foto.width) // 2, y + (alto - foto.height) // 2), foto)
+
+
+def flecha(dibujo, cx, cy):
+    """Botón azul con flecha, como en las fichas de Vika."""
+    dibujo.rounded_rectangle((cx - 32, cy - 32, cx + 32, cy + 32), radius=14, fill="#4A86E8", outline="#2F5FB3", width=3)
+    dibujo.polygon([(cx - 18, cy - 8), (cx + 2, cy - 8), (cx + 2, cy - 20), (cx + 22, cy),
+                    (cx + 2, cy + 20), (cx + 2, cy + 8), (cx - 18, cy + 8)], fill="white")
+
+
+def precio_corto(valor):
+    """123 → «123€»; 123.5 → «123,50€»."""
+    return f"{valor:g}€" if float(valor).is_integer() else euros(valor).replace(" ", "")
+
+
+def texto_cristales(extras):
+    """«Cristales: 1440 cristales (30,00 €); …» → «1440 CRISTALES Y 40 PIEDRAS…», sin los precios."""
+    partes = []
+    for extra in str(extras or "").split(";"):
+        extra = extra.split(" (")[0].strip()
+        if extra:
+            grupo, dos_puntos, opcion = extra.partition(": ")
+            if not dos_puntos:  # «Piedras de coser de cristal básicas × 20»
+                partes.append(extra)
+            elif "piedra" in opcion.lower() and "piedra" in grupo.lower():
+                partes.append(f"{opcion} {grupo.lower().removeprefix('piedras').strip()}")
+            else:
+                partes.append(opcion)
+    return " y ".join(partes).upper()
+
+
+def ficha_imagen(p, fotos):
+    """Ficha del pedido con el diseño de Vika Sports, en PNG.
+    Arriba, como la ficha de taller; debajo, el resto de datos para no perder nada."""
+    lienzo = Image.new("RGB", (ANCHO_FICHA, 6000), "white")
+    d = ImageDraw.Draw(lienzo)
+
+    # Cabecera: degradado rosa-turquesa con el logo
+    for x in range(ANCHO_FICHA):
+        t = x / ANCHO_FICHA
+        d.line([(x, 0), (x, 290)], fill=tuple(round(a + (b - a) * t) for a, b in zip((249, 214, 234), (205, 239, 241))))
+    logo = Image.open(IMAGENES / "logo_horizontal.png").convert("RGBA")
+    logo.thumbnail((900, 210))
+    lienzo.paste(logo, ((ANCHO_FICHA - logo.width) // 2, (290 - logo.height) // 2), logo)
+
+    recorte = p["tecnica"] == "Recorte"
+    cantidad = int(float(p["cantidad"] or 0))
+    if p["tallaje"] == "A medida":
+        tallaje = "MEDIDA"
+    elif str(p["talla"]).strip():
+        tallaje = f"TALLA {p['talla']}"
+    else:
+        tallaje = str(p["tallaje"]).upper() or "—"
+    telas = "\n".join(x for x in [str(p["tecnica"]).upper(), " · ".join(
+        str(v).upper() for v in [p["tejido"], p["forro"]] if str(v).strip())] if x)
+
+    # Columna izquierda: etiquetas en negro y valores en naranja
+    izq_x, izq_ancho = 30, 440
+    y = 340
+    for etiqueta, valor in [("Gimnasta", tallaje), ("Telas y colores:", telas or "—"),
+                            ("Falda:", str(p["falda"]).upper() or "—"), ("Manga:", str(p["mangas"]).upper() or "—"),
+                            ("Complementos:", str(p["complementos"]).upper() or "SIN COMPLEMENTOS")]:
+        y = escribir(d, etiqueta, izq_x, y, izq_ancho, letra_etiqueta(44), NEGRO)
+        y = escribir(d, valor, izq_x + 20, y + 8, izq_ancho - 20, letra_mano(46), NARANJA) + 50
+    fin_izquierda = y
+
+    # Columna derecha: nombre de la gimnasta, diseño y precio
+    der_x, der_ancho = 490, 670
+    y = escribir(d, str(p["gimnasta"]).upper() or "—", der_x, 350, der_ancho, letra_mano(66), NARANJA, centrado=True) + 40
+    if len(fotos) == 2:
+        pegar_foto(lienzo, fotos[0], der_x, y, 300, 500)
+        pegar_foto(lienzo, fotos[1], der_x + der_ancho - 300, y, 300, 500)
+        flecha(d, der_x + der_ancho // 2, y + 250)
+        y += 540
+    elif fotos:
+        # Una foto grande, o de dos en dos si hay más
+        alto = 520 if len(fotos) == 1 else 400
+        for i in range(0, len(fotos), 2):
+            fila = fotos[i:i + 2]
+            ancho = der_ancho // len(fila)
+            for j, foto in enumerate(fila):
+                pegar_foto(lienzo, foto, der_x + j * ancho + 8, y, ancho - 16, alto)
+            y += alto + 20
+        y += 20
+    else:
+        d.rounded_rectangle((der_x + 60, y, der_x + der_ancho - 60, y + 300), radius=24, outline="#DCECEE", width=4)
+        escribir(d, "Sin foto ni modelo de catálogo", der_x + 60, y + 125, der_ancho - 120, letra_etiqueta(28), GRIS,
+                 centrado=True)
+        y += 340
+    etiqueta_pvp, letra_pvp = "P.V.P:", letra_etiqueta(84, "ExtraBold")
+    valor_pvp = "CONSULTAR" if recorte else precio_corto(float(p["total"] or 0))
+    letra_valor = letra_mano(72 if recorte else 140)
+    ancho_pvp = d.textlength(etiqueta_pvp, font=letra_pvp) + 30 + d.textlength(valor_pvp, font=letra_valor)
+    px = der_x + (der_ancho - ancho_pvp) / 2
+    d.text((px, y + 40), etiqueta_pvp, font=letra_pvp, fill=ROJO)
+    d.text((px + d.textlength(etiqueta_pvp, font=letra_pvp) + 30, y + (40 if recorte else 0)), valor_pvp,
+           font=letra_valor, fill=NARANJA)
+    y += 170
+    if not recorte and cantidad > 1:
+        y = escribir(d, f"{cantidad} maillots × {precio_corto(float(p['precio_unidad'] or 0))}", der_x, y, der_ancho,
+                     letra_etiqueta(30), GRIS, centrado=True)
+    fin_derecha = y
+
+    # Descripción y cristales
+    y = max(fin_izquierda, fin_derecha) + 40
+    fin_desc = escribir(d, "Descripción:", izq_x, y, izq_ancho + 20, letra_etiqueta(48), NEGRO, centrado=True)
+    fin_desc = escribir(d, str(p["descripcion"]).upper() or "—", izq_x, fin_desc + 50, izq_ancho + 20, letra_mano(46),
+                        NARANJA, centrado=True)
+    fin_cris = escribir(d, "Cristales:", der_x, y, der_ancho, letra_etiqueta(48), NEGRO, centrado=True)
+    fin_cris = escribir(d, texto_cristales(p["extras"]) or "SIN CRISTALES", der_x, fin_cris + 30, der_ancho,
+                        letra_mano(56), NARANJA, centrado=True)
+    y = max(fin_desc, fin_cris) + 60
+
+    # El resto de datos del pedido, para que la ficha lo tenga todo
+    d.line([(30, y), (ANCHO_FICHA - 30, y)], fill="#DCECEE", width=3)
+    y += 30
+    numero = int(p["id"])
+    filas = [
+        ("Pedido", f"N.º {numero} · {fecha_bonita(p['fecha'])} · {p['estado']}"),
+        ("Cliente", p["nombre"]), ("Teléfono", p["telefono"]), ("Email", p["email"]),
+        ("Club", p["club"]), ("Ciudad", p["ciudad"]), ("Producto", p["producto"]), ("Cantidad", cantidad),
+        ("Diseño", p["diseno"]), ("Modelo", p["modelo"]),
+        ("Precio", "Consultar (recorte)" if recorte else
+         f"{euros(float(p['precio_unidad'] or 0))} por maillot · Total {euros(float(p['total'] or 0))}"),
+        ("Extras", "\n".join(e.strip() for e in str(p["extras"]).split(";") if e.strip())),
+        ("Imágenes", p["imagenes"]),
+        # Datos de columnas de versiones anteriores del formulario, para no perder nada.
+        *[(c.replace("_", " ").capitalize(), v) for c, v in p.items() if c not in COLUMNAS and c != "fecha_dt"],
+    ]
+    for etiqueta, valor in filas:
+        if str(valor).strip():
+            d.text((40, y), etiqueta, font=letra_etiqueta(26), fill=GRIS)
+            if d.textlength(etiqueta, font=letra_etiqueta(26)) > 195:  # nombre largo: el valor va debajo
+                y += 36
+            y = escribir(d, valor, 250, y, ANCHO_FICHA - 290, letra_etiqueta(26, "Bold"), NEGRO, interlineado=1.3) + 8
+
+    medidas = partes_medidas(p["medidas"])
+    if medidas:
+        y += 20
+        d.text((40, y), "Medidas (cm)", font=letra_etiqueta(30, "Bold"), fill=NEGRO)
+        y += 50
+        for bloque, casillas in medidas:
+            if bloque:
+                d.text((40, y), bloque, font=letra_etiqueta(26, "Bold"), fill="#C0157E")
+                y += 40
+            for i, (medida, cifra) in enumerate(casillas):
+                cx, cy = 40 + (i % 5) * 222, y + (i // 5) * 100
+                d.rounded_rectangle((cx, cy, cx + 206, cy + 86), radius=14, fill="#E3F6F7")
+                d.text((cx + 14, cy + 10), medida, font=letra_etiqueta(22), fill=GRIS)
+                d.text((cx + 14, cy + 40), cifra, font=letra_etiqueta(30, "Bold"), fill=NEGRO)
+            y += ((len(casillas) - 1) // 5 + 1) * 100 + 10
+    y += 40
+
+    salida = io.BytesIO()
+    lienzo.crop((0, 0, ANCHO_FICHA, y)).save(salida, "PNG", optimize=True)
+    return salida.getvalue()
+
+
+def guardar_estado_ficha(numero, clave):
+    estado = st.session_state[clave]
+    cambiar_estado(numero, estado)
+    st.toast(f"Pedido n.º {numero}: {estado}")
+
+
+def fotos_del_pedido(p):
+    """Foto del modelo de catálogo (si se puede descargar) y las imágenes que adjuntó el cliente."""
+    codigo = codigo_modelo(p["modelo"])
+    imagenes = leer_imagenes(int(p["id"]))
+    return [f for f in [foto_catalogo(codigo) if codigo else None] if f] + [foto for _, foto in imagenes], imagenes
+
+
+def nombre_ficha(p):
+    return f"ficha-pedido-{int(p['id'])}-{str(p['gimnasta']).strip().replace(' ', '-') or 'maillot'}.png"
+
+
+def todas_las_fichas(vista):
+    """ZIP con la ficha de cada pedido en PNG y un PDF con todas, una por página.
+    Solo lee los pedidos: no cambia nada en la base de datos."""
+    salida, paginas, fallos = io.BytesIO(), [], []
+    avance = st.progress(0.0, text="Preparando fichas…")
+    filas = vista.fillna("").to_dict("records")
+    with zipfile.ZipFile(salida, "w", zipfile.ZIP_DEFLATED) as zip_fichas:
+        for i, p in enumerate(filas, 1):
+            try:
+                ficha = ficha_imagen(p, fotos_del_pedido(p)[0])
+                zip_fichas.writestr(nombre_ficha(p), ficha)
+                paginas.append(Image.open(io.BytesIO(ficha)).convert("RGB"))
+            except Exception as error:  # se avisa del pedido que falle, nunca se salta en silencio
+                fallos.append(f"Pedido n.º {p['id']}: {error}")
+            avance.progress(i / len(filas), text=f"Ficha {i} de {len(filas)}")
+        if paginas:
+            pdf = io.BytesIO()
+            paginas[0].save(pdf, "PDF", save_all=True, append_images=paginas[1:], resolution=150)
+            zip_fichas.writestr("todas-las-fichas.pdf", pdf.getvalue())
+        if fallos:
+            zip_fichas.writestr("PEDIDOS-SIN-FICHA.txt", "\n".join(fallos))
+    avance.empty()
+    return salida.getvalue(), len(paginas), fallos
+
+
+def bloque_todas_las_fichas(vista):
+    with st.container(border=True):
+        st.markdown(f"**Fichas de todos los pedidos de la lista ({len(vista)})**")
+        st.caption("Descarga un ZIP con la ficha de cada pedido en imagen y un PDF con todas, para imprimir. "
+                   "Solo se leen los pedidos: no se cambia ni se borra nada.")
+        pedidos_lista = tuple(vista["id"])
+        if st.button("Preparar las fichas", key="preparar_fichas"):
+            st.session_state.fichas_zip = (pedidos_lista, todas_las_fichas(vista))
+        # Si cambian los filtros, el ZIP anterior ya no corresponde a la lista: se vuelve a preparar.
+        guardado = st.session_state.get("fichas_zip")
+        if guardado and guardado[0] == pedidos_lista:
+            datos, hechas, fallos = guardado[1]
+            if fallos:
+                st.error(f"{len(fallos)} pedido(s) no se pudieron pasar a ficha (sus datos siguen intactos):\n\n"
+                         + "\n".join(f"- {f}" for f in fallos))
+            st.success(f"{hechas} fichas listas.")
+            st.download_button("⬇️ Descargar todas las fichas (ZIP)", datos, type="primary",
+                               file_name=f"fichas-pedidos-{ahora():%Y-%m-%d}.zip", mime="application/zip")
+
+
+def ficha_pedido(p, donde):
+    """Ficha completa de un pedido, con el diseño de las fichas de Vika Sports."""
+    numero = int(p["id"])
+    recorte = p["tecnica"] == "Recorte"
+    color = COLOR_ESTADO.get(p["estado"], "#C0157E")
+    lugar = " · ".join(x for x in [p["club"], p["ciudad"]] if str(x).strip())
+    importe = "Consultar precio" if recorte else euros(float(p["total"] or 0))
+    st.markdown(
+        f"<div class='ficha-cab'><div>"
+        f"<span class='eti'>Pedido n.º {numero} · {html.escape(fecha_bonita(p['fecha']))}</span>"
+        f"<h2>{html.escape(p['nombre'])}</h2><span class='sub'>{html.escape(lugar)}</span></div>"
+        f"<div class='importe'><span class='chip-estado' style='color:{color}'>{html.escape(p['estado'])}</span>"
+        f"<strong>{importe}</strong></div></div>",
+        unsafe_allow_html=True,
+    )
+
+    a, b, c = st.columns([2, 1, 1], vertical_alignment="bottom")
+    a.selectbox("Estado del pedido", ESTADOS, key=f"estado_ficha_{donde}_{numero}",
+                index=ESTADOS.index(p["estado"]) if p["estado"] in ESTADOS else 0,
+                on_change=guardar_estado_ficha, args=(numero, f"estado_ficha_{donde}_{numero}"))
+    enlace = whatsapp_cliente(p["telefono"])
+    if enlace:
+        b.link_button("WhatsApp al cliente", enlace, width="stretch")
+    if p["email"]:
+        c.link_button("Email al cliente", f"mailto:{p['email']}?subject=" + urllib.parse.quote(f"Tu pedido n.º {numero} de Vika Sports"),
+                      width="stretch")
+
+    codigo = codigo_modelo(p["modelo"])
+    fotos, imagenes = fotos_del_pedido(p)
+    ficha = ficha_imagen(p, fotos)
+
+    izquierda, derecha = st.columns([3, 2], gap="large")
+    with izquierda:
+        st.image(ficha, width="stretch")
+    with derecha:
+        st.download_button("⬇️ Descargar ficha (imagen)", ficha, file_name=nombre_ficha(p), mime="image/png",
+                           type="primary", key=f"ficha_{donde}_{numero}", width="stretch")
+        st.caption("La imagen lleva todos los datos del pedido. Puedes mandarla por WhatsApp o imprimirla.")
+        if codigo:
+            st.link_button("Ver el modelo en el catálogo", f"{CATALOGO_URL}#{codigo}", width="stretch")
+            if foto_catalogo(codigo) is None:
+                st.caption("No se pudo cargar la foto del modelo de catálogo.")
+        for i, (nombre, foto) in enumerate(imagenes):
+            st.download_button(f"Descargar diseño del cliente: {nombre}", foto, file_name=f"pedido-{numero}-{nombre}",
+                               mime="image/jpeg", key=f"img_{donde}_{numero}_{i}", width="stretch")
+        if not imagenes and str(p["imagenes"]).strip():
+            st.caption(f"El cliente adjuntó: {p['imagenes']} (la imagen no está guardada en la base de datos).")
+        with st.expander("Texto del pedido para copiar"):
+            st.code(texto_pedido(numero, p).replace("*", ""), language=None)
+
+
+def pestana_tabla_completa(vista):
+    """Todos los campos de los pedidos. El estado se puede cambiar en la columna Estado."""
+    config_columnas = {c: st.column_config.Column(NOMBRES[c]) for c in COLUMNAS}
+    config_columnas.update({
+        "id": st.column_config.NumberColumn("N.º", width="small"),
+        "estado": st.column_config.SelectboxColumn("Estado", options=ESTADOS, required=True),
+        "precio_unidad": st.column_config.NumberColumn("Precio/ud.", format="%.2f €"),
+        "total": st.column_config.NumberColumn("Total", format="%.2f €"),
+    })
+    editada = st.data_editor(
+        vista, hide_index=True, width="stretch", column_order=COLUMNAS,
+        disabled=[c for c in vista.columns if c != "estado"],
+        column_config=config_columnas, key="tabla_pedidos",
+    )
+    cambios = editada[editada["estado"] != vista["estado"]]
+    for _, fila in cambios.iterrows():
+        cambiar_estado(int(fila["id"]), fila["estado"])
+    if not cambios.empty:
+        st.toast(f"Estado actualizado en {len(cambios)} pedido(s).")
+    st.download_button("Descargar estos pedidos en Excel",
+                       a_excel(vista.drop(columns="fecha_dt").rename(columns=NOMBRES), "Pedidos"),
+                       file_name=f"pedidos-maillots-{ahora():%Y-%m-%d}.xlsx")
+
+
+def abrir_desde_lista(lista, clave):
+    """Al marcar un pedido en la lista, se abre su ficha."""
+    filas = st.session_state["lista_pedidos"].selection.rows
+    if filas and filas[0] < len(lista):
+        st.session_state[clave] = int(lista.iloc[filas[0]]["id"])
+
+
+def elegir_y_mostrar_ficha(vista, clave):
+    """Desplegable con los pedidos de la vista y la ficha del elegido (el más reciente al principio)."""
+    if vista.empty:
+        st.info("No hay pedidos con estos filtros.")
+        return
+    pedidos = {int(p["id"]): p for p in vista.fillna("").to_dict("records")}
+    if st.session_state.get(clave) not in pedidos:  # el pedido abierto ya no está en la lista (búsqueda, filtros)
+        st.session_state[clave] = next(iter(pedidos))
+    numero = st.selectbox(
+        "Abrir la ficha del pedido", list(pedidos), key=clave,
+        format_func=lambda n: " · ".join(str(x) for x in [f"N.º {n}", pedidos[n]["nombre"], pedidos[n]["gimnasta"],
+                                                          fecha_bonita(pedidos[n]["fecha"])] if str(x).strip()),
+    )
+    ficha_pedido(pedidos[numero], clave)
+
+
 def pagina_base_datos():
     if not acceso_gestion():
         return
@@ -996,45 +1450,24 @@ def pagina_base_datos():
     pestana_pedidos, pestana_clientes, pestana_resumen = st.tabs(["Pedidos", "Clientes", "Resumen"])
 
     with pestana_pedidos:
-        st.caption("Cambia el estado de un pedido directamente en la columna Estado.")
-        config_columnas = {c: st.column_config.Column(NOMBRES[c]) for c in COLUMNAS}
-        config_columnas.update({
-            "id": st.column_config.NumberColumn("N.º", width="small"),
-            "estado": st.column_config.SelectboxColumn("Estado", options=ESTADOS, required=True),
-            "precio_unidad": st.column_config.NumberColumn("Precio/ud.", format="%.2f €"),
-            "total": st.column_config.NumberColumn("Total", format="%.2f €"),
-        })
-        editada = st.data_editor(
-            vista, hide_index=True, width="stretch", column_order=COLUMNAS,
-            disabled=[c for c in vista.columns if c != "estado"],
-            column_config=config_columnas, key="tabla_pedidos",
+        bloque_todas_las_fichas(vista)
+        st.caption("Marca la casilla de la izquierda de un pedido, o elígelo debajo, para abrir su ficha.")
+        lista = vista[["id", "fecha", "estado", "nombre", "club", "gimnasta", "modelo", "total"]].reset_index(drop=True)
+        st.dataframe(
+            lista, hide_index=True, width="stretch", selection_mode="single-row",
+            on_select=lambda: abrir_desde_lista(lista, "ficha_abierta"),
+            key="lista_pedidos", height=min(38 + 35 * len(lista), 320),
+            column_config={
+                "id": st.column_config.NumberColumn("N.º", width="small"),
+                "fecha": "Fecha", "estado": "Estado", "nombre": "Cliente", "club": "Club",
+                "gimnasta": "Gimnasta", "modelo": "Modelo de catálogo",
+                "total": st.column_config.NumberColumn("Total", format="%.2f €"),
+            },
         )
-        cambios = editada[editada["estado"] != vista["estado"]]
-        for _, fila in cambios.iterrows():
-            cambiar_estado(int(fila["id"]), fila["estado"])
-        if not cambios.empty:
-            st.toast(f"Estado actualizado en {len(cambios)} pedido(s).")
-        st.download_button("Descargar estos pedidos en Excel",
-                           a_excel(vista[COLUMNAS].rename(columns=NOMBRES), "Pedidos"),
-                           file_name=f"pedidos-maillots-{ahora():%Y-%m-%d}.xlsx")
+        elegir_y_mostrar_ficha(vista, "ficha_abierta")
 
-        st.subheader("Ficha del pedido completo")
-        fichas = {int(f["id"]): f for f in vista.fillna("").to_dict("records")}
-        elegido = st.selectbox(
-            "Elige un pedido", list(fichas), index=None, placeholder="N.º de pedido, cliente o gimnasta",
-            format_func=lambda i: f"N.º {i} · {fichas[i]['fecha']} · {fichas[i]['nombre']} · gimnasta {fichas[i]['gimnasta']}",
-        )
-        if elegido:
-            ficha = fichas[elegido]
-            st.caption(f"Estado: {ficha['estado']}")
-            st.text(texto_pedido(elegido, ficha).replace("*", ""))
-            imagenes = leer_imagenes(elegido)
-            if imagenes:
-                st.markdown("**Imágenes de diseño que adjuntó el cliente**")
-                for i, (nombre, datos) in enumerate(imagenes):
-                    st.image(datos, caption=nombre, width=420)
-                    st.download_button(f"Descargar {nombre}", datos, file_name=f"pedido-{elegido}-{nombre}",
-                                       mime="image/jpeg", key=f"img_{elegido}_{i}")
+        with st.expander("Tabla completa: cambiar estados de varios pedidos y descargar Excel"):
+            pestana_tabla_completa(vista)
 
     with pestana_clientes:
         st.dataframe(
@@ -1051,6 +1484,7 @@ def pagina_base_datos():
         if elegido:
             suyos = vista[vista["nombre"] == elegido]
             st.dataframe(suyos[COLUMNAS].rename(columns=NOMBRES), hide_index=True, width="stretch")
+            elegir_y_mostrar_ficha(suyos, "ficha_cliente")
 
     with pestana_resumen:
         st.caption("Cuántos maillots se han pedido de cada tipo, con los filtros aplicados.")
