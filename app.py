@@ -313,18 +313,23 @@ def cargar_config():
 def actualizar_config(guardada, nueva):
     """Toma las opciones de la versión nueva, pero conserva los precios que ya se
     habían cambiado en la página Precios para las opciones que siguen existiendo."""
-    if guardada.get("version", 1) >= 2:  # la versión 1 tenía otras opciones: se sustituye entera
-        nueva["precio_base"] = guardada.get("precio_base", nueva["precio_base"])
-        for grupo, opciones in nueva["opciones"].items():
-            for opcion in opciones:
-                if opcion in guardada["opciones"].get(grupo, {}):
-                    opciones[opcion] = guardada["opciones"][grupo][opcion]
-        for grupo, datos in nueva.get("extras", {}).items():
-            antes = guardada.get("extras", {}).get(grupo, {}).get("opciones", {})
-            for opcion in datos["opciones"]:
-                if opcion in antes:
-                    datos["opciones"][opcion] = antes[opcion]
-    return nueva
+    if guardada.get("version", 1) < 2:  # la versión 1 tenía otras opciones: se sustituye entera
+        return nueva
+    # Se conserva todo lo de la página Precios (precios, opciones añadidas, nota) y solo se
+    # añaden los grupos y opciones nuevos de precios.json, más sus listas de tallas y productos.
+    config = json.loads(json.dumps(guardada))
+    for grupo, opciones in nueva["opciones"].items():
+        for opcion, precio in opciones.items():
+            config["opciones"].setdefault(grupo, {}).setdefault(opcion, precio)
+    for grupo, datos in nueva.get("extras", {}).items():
+        actual = config.setdefault("extras", {}).setdefault(grupo, {**datos, "opciones": {}})
+        for opcion, precio in datos["opciones"].items():
+            actual["opciones"].setdefault(opcion, precio)
+    for clave in ["tallas", "productos", "varios", "version"]:
+        if clave in nueva:
+            config[clave] = nueva[clave]
+    config.setdefault("nota_piedras", nueva.get("nota_piedras", ""))
+    return config
 
 
 def guardar_config(config):
@@ -880,7 +885,8 @@ def pagina_pedido():
 
             tallaje = elecciones_actuales(config).get("Tallaje")
             if tallaje == "Talla":
-                st.pills("Elige la talla *", config["tallas"], key="talla")
+                st.pills("Elige la talla *", config["tallas"], key="talla",
+                         format_func=lambda t: f"Talla {t}" if str(t).isdigit() else str(t))
             elif tallaje == "A medida":
                 st.markdown("**Medidas de la gimnasta, en centímetros**")
                 st.toggle("Es un mono (con piernas)", key="es_mono")

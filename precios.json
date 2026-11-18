@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "precio_base": 60,
   "opciones": {
     "Técnica": {
@@ -69,5 +69,5 @@
   "nota_piedras": "Las piedras de coser se entregan solo pegadas. Pregunta presupuesto para entregarlas cosidas.",
   "varios": [],
   "productos": ["Maillot de competición"],
-  "tallas": ["4", "6", "8", "10", "12", "14", "XS", "S", "M", "L", "XL"]
+  "tallas": ["2", "4", "6", "8", "10", "12", "14", "16", "18", "20"]
 }
